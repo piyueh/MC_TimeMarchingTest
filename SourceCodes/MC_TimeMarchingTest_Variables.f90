@@ -6,6 +6,28 @@
 MODULE variables
 USE RNG
 IMPLICIT NONE
+!----------------------------------------------------------------------
+! User defined variable types
+!----------------------------------------------------------------------
+TYPE:: Phonon
+    REAL(KIND=8):: xyz(3)
+    REAL(KIND=8):: V, Vxyz(3)
+    REAL(KIND=8):: E
+    REAL(KIND=8):: Org(3), Dis(3)
+    INTEGER(KIND=4):: Mat
+    INTEGER(KIND=4):: eID(3)
+END TYPE Phonon
+
+TYPE:: Element
+    REAL(KIND=8):: BD(2, 3)
+    REAL(KIND=8):: T, E, Ediff
+END TYPE Element
+
+
+!----------------------------------------------------------------------
+! Parameters
+!----------------------------------------------------------------------
+REAL(KIND=8), PARAMETER:: M_PI = 3.14159265359D0
 
 
 !----------------------------------------------------------------------
@@ -15,7 +37,6 @@ IMPLICIT NONE
 REAL(KIND=8):: L(3)
 
 
-
 !----------------------------------------------------------------------
 ! Phonons
 !       Nph: Number of phonons in computational model.
@@ -23,13 +44,11 @@ REAL(KIND=8):: L(3)
 !              Nprop =
 !              1: x, 2: y, 3: z, 4: vx, 5: vy, 6:vz, 7: velocity,
 !              8: energy, 9: energy_material, 10: current element ID
-!              11: displacement
 !       phn: Phonon property array.  Dimension: Nprop x Nph.
 !       phID:
 !----------------------------------------------------------------------
 INTEGER(KIND=4):: Nph
-INTEGER(KIND=4):: Nprop
-REAL(KIND=8), ALLOCATABLE:: phn(:, :)
+TYPE(Phonon), ALLOCATABLE:: phn(:)
 REAL(KIND=8), ALLOCATABLE:: phID(:)
 
 
@@ -45,8 +64,7 @@ REAL(KIND=8), ALLOCATABLE:: phID(:)
 !----------------------------------------------------------------------
 REAL(KIND=8):: dL(3)
 INTEGER(KIND=4):: Ne(3)
-REAL(KIND=8), ALLOCATABLE:: Te(:), Ee(:), EeDiff(:)
-INTEGER(KIND=4), ALLOCATABLE:: eID(:,:), IDe(:, :, :)
+TYPE(Element), ALLOCATABLE:: ele(:, :, :)
 
 
 !----------------------------------------------------------------------
