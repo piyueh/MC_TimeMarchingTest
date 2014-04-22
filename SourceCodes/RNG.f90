@@ -3,10 +3,10 @@
 !! Purpose: Random number generator (RNG)
 !! Author: PY Chuang
 !!#####################################################################
-MODULE rng
+MODULE RNG
 IMPLICIT NONE
 PRIVATE
-PUBLIC:: rng_t, rng_seed, RAN_NUM
+PUBLIC:: rng_t, RNG_SEED, RAN_NUM
 !----------------------------------------------------------------------
 INTEGER(KIND=4), PARAMETER:: ns = 4
 INTEGER(KIND=4), PARAMETER, DIMENSION(ns):: default_seed = &
@@ -17,7 +17,7 @@ INTEGER(KIND=4), PARAMETER, DIMENSION(ns):: default_seed = &
 !       generator. "state" is a seed vector.
 !----------------------------------------------------------------------
 TYPE:: rng_t
-    INTEGER*4, DIMENSION(ns):: state
+    INTEGER(KIND=4), DIMENSION(ns):: state
 END TYPE rng_t
 !----------------------------------------------------------------------
 ! RAN_NUM:
@@ -35,10 +35,10 @@ CONTAINS
 
 !======================================================================
 !======================================================================
-    SUBROUTINE rng_seed( self, seed )
+    SUBROUTINE RNG_SEED( self, seed )
     IMPLICIT NONE
     TYPE(rng_t), INTENT(INOUT):: self
-    INTEGER*4, INTENT(IN):: seed
+    INTEGER(KIND=4), INTENT(IN):: seed
     !------------------------------------------------------------------
     ! This subroutine seeds the RNG using a double integer and a
     ! default seed vector.
@@ -53,14 +53,14 @@ CONTAINS
         self%state(1) = seed
         self%state(2:ns) = default_seed(2:ns)
 
-    END SUBROUTINE rng_seed
+    END SUBROUTINE RNG_SEED
 !======================================================================
 !======================================================================
     SUBROUTINE RAN_NUM_ONE_DOUBLE( self, u )
     IMPLICIT NONE
     TYPE(rng_t), INTENT(INOUT):: self
-    REAL*8:: u
-    INTEGER*4:: imz
+    REAL(KIND=8):: u
+    INTEGER(KIND=4):: imz
     !------------------------------------------------------------------
     ! This subroutine randomly draws an uniform real number on [0,1].
     !
@@ -88,8 +88,8 @@ CONTAINS
     SUBROUTINE RAN_NUM_DOUBLE_ARRAY( self, A )
     IMPLICIT NONE
     TYPE(rng_t),INTENT(INOUT):: self
-    INTEGER*4:: i, N(1)
-    REAL*8:: A(:)
+    INTEGER(KIND=4):: i, N(1)
+    REAL(KIND=8):: A(:)
 
         N = SIZE( A )
         DO i = 1, N(1)
@@ -102,8 +102,8 @@ CONTAINS
     SUBROUTINE RAN_NUM_DOUBLE_ARRAY_2D( self, A )
     IMPLICIT NONE
     TYPE(rng_t),INTENT(INOUT):: self
-    INTEGER*4:: i, j, N(2)
-    REAL*8:: A(:, :)
+    INTEGER(KIND=4):: i, j, N(2)
+    REAL(KIND=8):: A(:, :)
 
         N = SHAPE( A )
         DO j = 1, N(2)
@@ -118,8 +118,8 @@ CONTAINS
     SUBROUTINE RAN_NUM_DOUBLE_ARRAY_3D( self, A )
     IMPLICIT NONE
     TYPE(rng_t),INTENT(INOUT):: self
-    INTEGER*4:: i, j, k, N(3)
-    REAL*8:: A(:, :, :)
+    INTEGER(KIND=4):: i, j, k, N(3)
+    REAL(KIND=8):: A(:, :, :)
 
         N = SHAPE( A )
         DO k = 1, N(3)
@@ -133,4 +133,4 @@ CONTAINS
     END SUBROUTINE RAN_NUM_DOUBLE_ARRAY_3D
 !======================================================================
 !======================================================================
-END MODULE rng
+END MODULE RNG
