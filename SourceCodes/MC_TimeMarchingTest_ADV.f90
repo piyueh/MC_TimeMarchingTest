@@ -11,17 +11,22 @@ CONTAINS
 !----------------------------------------------------------------------
 ! Phonon Advance Subroutine - Controller
 !----------------------------------------------------------------------
-SUBROUTINE advance( phm, RSeed, dt )
-USE VAR, ONLY: Phonon
-TYPE(Phonon), INTENT(INOUT):: phm
-TYPE(rng_t), INTENT(INOUT):: Rseed
-REAL(KIND=8), INTENT(IN):: dt
+SUBROUTINE advance
+USE VAR
+USE ROUTINES, ONLY: cellInfo
 REAL(KIND=8):: dtRemain
-
-    dtRemain = dt
-    DO WHILE ( dtRemain.gt.0 )
-        CALL phn_advance( phm, Rseed, dtRemain )
+INTEGER(KIND=4):: iCPU, i
+    
+    iCPU = 1
+    
+    DO i = 1, Nph
+        dtRemain = dt
+        DO WHILE ( dtRemain.gt.0 )
+            CALL phn_advance( phn(i), SeedMP(iCPU), dtRemain )
+        ENDDO
     ENDDO
+    
+    CALL cellInfo
 
 END SUBROUTINE advance
 
@@ -217,7 +222,7 @@ END SUBROUTINE outDomain
 
 !======================================================================
 !----------------------------------------------------------------------
-! Diffused Response
+! Diffused Response on domain boundaries
 !----------------------------------------------------------------------
 SUBROUTINE Diffused( phm, hit, Rseed )
 USE VAR, ONLY: Phonon, M_PI
@@ -257,6 +262,31 @@ INTEGER(KIND=4):: tmpI1
     ENDSELECT
 
 END SUBROUTINE Diffused
+
+
+!======================================================================
+!----------------------------------------------------------------------
+! Create or delete phonons in elements for energy conservation
+!----------------------------------------------------------------------
+SUBROUTINE CreateDelete
+USE ROUTINES
+IMPLICIT NONE
+REAL(KIND=8):: tmpR1
+
+    CALL reorder
+    
+    DO k = 1, Ne(3); DO j = 1, Ne(2); DO i = 1, Ne(1)
+        tmpR1 = ele(i, j, k)%Eph * 0.5D0
+        IF ( ele(i, j, k)%Ediff.gt.tmpR1 ) THEN
+        
+        ELSEIF ( ele(i, j, k)%Ediff.lt.(-tmpR1) ) THEN
+        
+        ENDIF
+    ENDDO; ENDDO; ENDDO
+
+
+
+END SUBROUTINE CreateDelete
 
 
 

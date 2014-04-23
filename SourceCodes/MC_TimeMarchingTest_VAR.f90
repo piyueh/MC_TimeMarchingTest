@@ -60,7 +60,7 @@ REAL(KIND=8), ALLOCATABLE:: Ge_table(:, :), Si_table(:, :)
 REAL(KIND=8):: bundle
 INTEGER(KIND=4):: Nph
 TYPE(Phonon), ALLOCATABLE:: phn(:)
-!REAL(KIND=8), ALLOCATABLE:: phID(:)
+REAL(KIND=8), ALLOCATABLE:: phID(:)
 
 
 !----------------------------------------------------------------------
@@ -68,15 +68,11 @@ TYPE(Phonon), ALLOCATABLE:: phn(:)
 !       dL: Dimensions of cubic elements
 !       dV: Volume of cubic elementa
 !       Ne: Numbers of cubic elements in 3 directions (x, y, z)
-!       Te: Current temperature of elements
-!       Ee: Current total energy of phonons located in the elements
-!       EeDiff: Current energy difference of elements
-!       eID: The relationship between scalar ID and 3D index (i, j, k)
-!       IDe: The relationship between 3D index (i, j, k) and scalar ID
 !----------------------------------------------------------------------
 REAL(KIND=8):: dL(3), dV
 INTEGER(KIND=4):: Ne(3)
 TYPE(Element), ALLOCATABLE:: ele(:, :, :)
+INTEGER(KIND=4), ALLOCATABLE:: N(:, :, :), bg(:, :, :), ed(:, :, :)
 
 
 !----------------------------------------------------------------------

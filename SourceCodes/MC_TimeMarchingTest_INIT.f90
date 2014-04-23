@@ -22,7 +22,6 @@ REAL(KIND=8):: tmpR1
 INTEGER(KIND=4):: Npercell
 INTEGER(KIND=4):: tmpI1, Loc(3), i, j, k
 REAL(KIND=8), ALLOCATABLE:: rannum(:, :)
-INTEGER(KIND=4), ALLOCATABLE:: N(:, :, :)
 
     dt = 1D-1
     iter0 = 0
@@ -42,6 +41,8 @@ INTEGER(KIND=4), ALLOCATABLE:: N(:, :, :)
 
     ALLOCATE( ele(Ne(1), Ne(2), Ne(3)) )
     ALLOCATE( N(Ne(1), Ne(2), Ne(3)) )
+    ALLOCATE( bg(Ne(1), Ne(2), Ne(3)) )
+    ALLOCATE( ed(Ne(1), Ne(2), Ne(3)) )
     ele%T = 330D0
     ele%Mat = 1
     ele%Ediff = 0D0
@@ -75,6 +76,7 @@ INTEGER(KIND=4), ALLOCATABLE:: N(:, :, :)
     Nph = SUM( N )
     
     ALLOCATE( phn(Nph) )
+    ALLOCATE( phID(Nph) )
     
     tmpI1 = 0
     DO k = 1, Ne(3)
@@ -134,14 +136,18 @@ INTEGER(KIND=4), ALLOCATABLE:: N(:, :, :)
                 ele(i, j, k)%E = SUM( phn(tmpI1+1:tmpI1+N(i, j, k))%E )
                 ele(i, j, k)%Ediff = tmpR1 * dV - ele(i, j, k)%E
                 
+                bg(i, j, k) = tmpI1 + 1
+                ed(i, j, k) = tmpI1 + N(i, j, k)
+                
                 tmpI1 = tmpI1 + N(i, j, k)
             ENDDO
         ENDDO
     ENDDO
     
+    FORALL( i = 1:10 ) phID(i) = i
+    
     IF ( tmpI1.ne.Nph ) CALL Errors( 1 )
-        
-    DEALLOCATE( N )
+    IF ( ed(Ne(1), Ne(2), Ne(3)).ne.Nph ) CALL Errors( 2 )
     
     WRITE(*, *) "Total number of phonons: ", Nph
 

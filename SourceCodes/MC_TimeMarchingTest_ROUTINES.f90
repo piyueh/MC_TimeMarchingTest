@@ -12,6 +12,96 @@ CONTAINS
 
 !======================================================================
 !----------------------------------------------------------------------
+! Phonon reorder
+!----------------------------------------------------------------------
+SUBROUTINE reorder
+USE VAR, ONLY: N, bg, ed, Nph, phn, Ne, phID
+IMPLICIT NONE
+INTEGER(KIND=4):: i, j, k, tmpI1
+
+    N = 0
+    DO i = 1, Nph
+        IF ( phn(i)%E.gt.0 ) THEN
+            N(phn(i)%eID(1), phn(i)%eID(2), phn(i)%eID(3)) = &
+                     N(phn(i)%eID(1), phn(i)%eID(2), phn(i)%eID(3)) + 1
+        ENDIF
+    ENDDO
+    
+    tmpI1 = 0
+    DO k = 1, Ne(3)
+        DO j = 1, Ne(2)
+            DO i = 1, Ne(1)
+                bg(i, j, k) = tmpI1 + 1
+                ed(i, j, k) = tmpI1 + N(i, j, k)
+                tmpI1 = tmpI1 + N(i, j, k)
+            ENDDO
+        ENDDO
+    ENDDO
+    
+    N = 0
+    DO i = 1, Nph
+        IF ( phn(i)%E.gt.0 ) THEN
+            N(phn(i)%eID(1), phn(i)%eID(2), phn(i)%eID(3)) = &
+                     N(phn(i)%eID(1), phn(i)%eID(2), phn(i)%eID(3)) + 1
+            phID(bg(i, j, k) + &
+                N(phn(i)%eID(1), phn(i)%eID(2), phn(i)%eID(3)) - 1) = i
+        ENDIF
+    ENDDO
+    
+    Nph = SUM( N )
+    
+END SUBROUTINE reorder
+
+
+!======================================================================
+!----------------------------------------------------------------------
+! Get informations of elements from phonons
+!----------------------------------------------------------------------
+SUBROUTINE cellInfo
+USE VAR, ONLY: Nph, phn, Ne, ele, dV, bundle
+IMPLICIT NONE
+INTEGER(KIND=4):: i, j, k
+INTEGER(KIND=4):: I1, I2, I3
+
+    ele%E = 0D0
+    
+    DO i = 1, Nph
+        I1 = phn(i)%eID(1)
+        I2 = phn(i)%eID(2)
+        I3 = phn(i)%eID(3)
+        ele(I1, I2, I3)%E = ele(I1, I2, I3)%E + phn(i)%E
+    ENDDO
+    
+    ele%E = (ele%E + ele%Ediff) / dV
+    
+    DO k = 1, Ne(3)
+        DO j = 1, Ne(2)
+            DO i = 1, Ne(1)
+            
+                CALL Etable( ele(i, j, k)%Mat, 1, &
+                             ele(i, j, k)%E, ele(i, j, k)%T )
+                
+                CALL Etable( ele(i, j, k)%Mat, 2, &
+                             ele(i, j, k)%E, ele(i, j, k)%N )
+                             
+                ele(i, j, k)%Eph = ele(i, j, k)%E / ele(i, j, k)%N * &
+                                   bundle
+                                   
+                CALL Etable( ele(i, j, k)%Mat, 4, &
+                             ele(i, j, k)%E, ele(i, j, k)%Vph )
+                
+                CALL Etable( ele(i, j, k)%Mat, 5, &
+                             ele(i, j, k)%E, ele(i, j, k)%MFP )
+                             
+            ENDDO
+        ENDDO
+    ENDDO
+
+END SUBROUTINE cellInfo
+
+
+!======================================================================
+!----------------------------------------------------------------------
 ! Return target propertie (out) under specific material (mat) and
 ! energy density (E).
 ! mat = 1: Ge,  2: Si
