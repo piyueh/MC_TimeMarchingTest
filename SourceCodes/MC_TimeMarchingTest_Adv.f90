@@ -1,6 +1,6 @@
 !!#####################################################################
 !! Module Name: ADV
-!! Purpose: Collection od subroutines related to phonon advancement.
+!! Purpose: Collection of subroutines related to phonon advancement.
 !! Author: PY Chuang
 !!#####################################################################
 MODULE ADV

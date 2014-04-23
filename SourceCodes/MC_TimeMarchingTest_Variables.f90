@@ -26,7 +26,7 @@ END TYPE Element
 
 
 !----------------------------------------------------------------------
-! Parameters
+! Constant parameters
 !----------------------------------------------------------------------
 REAL(KIND=8), PARAMETER:: M_PI = 3.14159265359D0
 
@@ -39,6 +39,15 @@ REAL(KIND=8):: L(3)
 
 
 !----------------------------------------------------------------------
+! Material tables
+!----------------------------------------------------------------------
+REAL(KIND=8):: Ge_start, Si_start
+REAL(KIND=8):: dU_Ge, dU_Si
+INTEGER(KIND=4):: N_Ge1, N_Ge2, N_Si1, N_Si2
+REAL(KIND=8), ALLOCATABLE:: Ge_table(:, :), Si_table(:, :)
+
+
+!----------------------------------------------------------------------
 ! Phonons
 !       Nph: Number of phonons in computational model.
 !       Nprop: Number of properties carried with a phonon.
@@ -48,6 +57,7 @@ REAL(KIND=8):: L(3)
 !       phn: Phonon property array.  Dimension: Nprop x Nph.
 !       phID:
 !----------------------------------------------------------------------
+REAL(KIND=8):: boundle
 INTEGER(KIND=4):: Nph
 TYPE(Phonon), ALLOCATABLE:: phn(:)
 REAL(KIND=8), ALLOCATABLE:: phID(:)
@@ -56,6 +66,7 @@ REAL(KIND=8), ALLOCATABLE:: phID(:)
 !----------------------------------------------------------------------
 ! Element
 !       dL: Dimensions of cubic elements
+!       dV: Volume of cubic elementa
 !       Ne: Numbers of cubic elements in 3 directions (x, y, z)
 !       Te: Current temperature of elements
 !       Ee: Current total energy of phonons located in the elements
@@ -63,7 +74,7 @@ REAL(KIND=8), ALLOCATABLE:: phID(:)
 !       eID: The relationship between scalar ID and 3D index (i, j, k)
 !       IDe: The relationship between 3D index (i, j, k) and scalar ID
 !----------------------------------------------------------------------
-REAL(KIND=8):: dL(3)
+REAL(KIND=8):: dL(3), dV
 INTEGER(KIND=4):: Ne(3)
 TYPE(Element), ALLOCATABLE:: ele(:, :, :)
 
