@@ -11,17 +11,16 @@ CONTAINS
 !----------------------------------------------------------------------
 ! Phonon Advance Subroutine - Controller
 !----------------------------------------------------------------------
-SUBROUTINE advance( phm, RSeed, dt, i )
+SUBROUTINE advance( phm, RSeed, dt )
 USE VAR, ONLY: Phonon
 TYPE(Phonon), INTENT(INOUT):: phm
 TYPE(rng_t), INTENT(INOUT):: Rseed
 REAL(KIND=8), INTENT(IN):: dt
 REAL(KIND=8):: dtRemain
-INTEGER(KIND=4):: i
 
     dtRemain = dt
     DO WHILE ( dtRemain.gt.0 )
-        CALL phn_advance( phm, Rseed, dtRemain, i )
+        CALL phn_advance( phm, Rseed, dtRemain )
     ENDDO
 
 END SUBROUTINE advance
@@ -31,7 +30,7 @@ END SUBROUTINE advance
 !----------------------------------------------------------------------
 ! Phonon Advance Subroutine - Single Time
 !----------------------------------------------------------------------
-SUBROUTINE phn_advance( phm, RSeed, dtRemain, i )
+SUBROUTINE phn_advance( phm, RSeed, dtRemain )
 USE VAR, ONLY: Phonon, Element, ele
 USE RNG
 IMPLICIT NONE
@@ -39,10 +38,10 @@ TYPE(Phonon), INTENT(INOUT):: phm
 REAL(KIND=8), INTENT(INOUT):: dtRemain
 TYPE(rng_t), INTENT(INOUT):: RSeed
 REAL(KIND=8):: dtUsed
-INTEGER(KIND=4):: hit, i
+INTEGER(KIND=4):: hit
 LOGICAL:: TF
 
-    CALL hit_ElementSurface( phm, dtUsed, hit, i )
+    CALL hit_ElementSurface( phm, dtUsed, hit )
 
     IF ( dtUsed.gt.dtRemain ) THEN
 
@@ -95,14 +94,14 @@ END SUBROUTINE phn_advance
 ! Adjust the element surface the phonon will hit first.  And calculate
 ! the time it needs.
 !----------------------------------------------------------------------
-SUBROUTINE hit_ElementSurface( phm, dtUsed, hit, m )
+SUBROUTINE hit_ElementSurface( phm, dtUsed, hit )
 USE VAR, ONLY: Phonon, Element, ele
 IMPLICIT NONE
 TYPE(Phonon), INTENT(IN):: phm
 REAL(KIND=8), INTENT(OUT):: dtUsed
 INTEGER(KIND=4), INTENT(OUT):: hit
 REAL(KIND=8):: ds(3)
-INTEGER(KIND=4):: i, tmpI1, tmpI2, tmpI3, Loc(1), face(3), m
+INTEGER(KIND=4):: i, tmpI1, tmpI2, tmpI3, Loc(1), face(3)
 
     tmpI1 = phm%eID(1)
     tmpI2 = phm%eID(2)
@@ -122,18 +121,6 @@ INTEGER(KIND=4):: i, tmpI1, tmpI2, tmpI3, Loc(1), face(3), m
             face(i) = 0
         ENDIF
     ENDDO
-
-    !IF ( ANY( ds.eq.0 ) ) THEN
-    !    WRITE(*, *) "SUBROUTINE hit_ElementSurface"
-    !    WRITE(*, *) "Phonon ", m
-    !    WRITE(*, *) "phm: "
-    !    WRITE(*, *) phm
-    !    WRITE(*, *) "ele: "
-    !    WRITE(*, *) ele(tmpI1, tmpI2, tmpI3)
-    !    WRITE(*, *) "ds: "
-    !    WRITE(*, *) ds
-    !    READ(*, *)
-    !ENDIF
 
     Loc = MINLOC( ds )
     dtUsed = ds(Loc(1))
@@ -168,8 +155,8 @@ LOGICAL:: TF
 
     IF ( rannum(1).le.prob ) THEN
 
-        tmpR1 = rannum(4) * M_PI
-        tmpR2 = rannum(5) * M_PI * 2D0
+        tmpR1 = rannum(2) * M_PI
+        tmpR2 = rannum(3) * M_PI * 2D0
 
         ele(tmpI1, tmpI2, tmpI3)%Ediff = &
                                    ele(tmpI1, tmpI2, tmpI3)%Ediff + &

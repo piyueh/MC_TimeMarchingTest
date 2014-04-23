@@ -57,10 +57,10 @@ REAL(KIND=8), ALLOCATABLE:: Ge_table(:, :), Si_table(:, :)
 !       phn: Phonon property array.  Dimension: Nprop x Nph.
 !       phID:
 !----------------------------------------------------------------------
-REAL(KIND=8):: boundle
+REAL(KIND=8):: bundle
 INTEGER(KIND=4):: Nph
 TYPE(Phonon), ALLOCATABLE:: phn(:)
-REAL(KIND=8), ALLOCATABLE:: phID(:)
+!REAL(KIND=8), ALLOCATABLE:: phID(:)
 
 
 !----------------------------------------------------------------------

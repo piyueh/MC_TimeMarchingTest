@@ -92,5 +92,22 @@ REAL(KIND=8):: E1, E2, T1, T2, Tout
 
 END SUBROUTINE energy
 
+
+!======================================================================
+!----------------------------------------------------------------------
+! Errors
+!----------------------------------------------------------------------
+SUBROUTINE Errors( code )
+IMPLICIT NONE
+INTEGER(KIND=4), INTENT(IN):: code
+
+    WRITE(*, *) "ERROR: ERROR CODE IS ", code, " !"
+    WRITE(*, *) "PRESS ENTER TO STOP THE PROGRAM!"
+    READ(*, *)
+    STOP
+
+END SUBROUTINE Errors
+
+
 !======================================================================
 END MODULE ROUTINES

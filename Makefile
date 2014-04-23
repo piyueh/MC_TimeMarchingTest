@@ -1,18 +1,26 @@
-Test: RNG.o MC_TimeMarchingTest_Variables.o MC_TimeMarchingTest_Adv.o MC_TimeMarchingTest_Main.o
-	ifort -traceback -o ./bin/MC_TimeMarchingTest ./obj/RNG.o ./obj/MC_TimeMarchingTest_Variables.o ./obj/MC_TimeMarchingTest_Adv.o ./obj/MC_TimeMarchingTest_Main.o
+# For GNU make
+FC = ifort
+PROJECT = MC_TimeMarchingTest
+FFLAGS = -g -traceback -check all -fp-stack-check -warn all -debug full -module ${OBJ}
+SRC = ./SourceCodes/
+BIN = ./bin/
+OBJ = ./obj/
+INC = -I
+LIB = -L
 
-RNG.o: ./SourceCodes/RNG.f90
-	ifort -traceback -warn stderrors -warn errors -warn all -debug full -module ./obj/ -c ./SourceCodes/RNG.f90 -o ./obj/RNG.o
+all:
+	if [ ! -e ${BIN} ]; then mkdir ${BIN}; fi
+	if [ ! -e ${OBJ} ]; then mkdir ${OBJ}; fi
+	make clean
+	make main
 
-MC_TimeMarchingTest_Variables.o: ./SourceCodes/MC_TimeMarchingTest_Variables.f90 RNG.o
-	ifort -traceback -warn stderrors -warn errors -warn all -debug full -module ./obj/ -c ./SourceCodes/MC_TimeMarchingTest_Variables.f90 -o ./obj/MC_TimeMarchingTest_Variables.o
+main: RNG.o VAR.o ROUTINES.o INIT.o ADV.o main.o
+	${FC} ${FFLAGS} -o ${BIN}${PROJECT} ./obj/RNG.o ./obj/VAR.o ./obj/ROUTINES.o ./obj/INIT.o ./obj/ADV.o ./obj/main.o
 
-MC_TimeMarchingTest_Adv.o: ./SourceCodes/MC_TimeMarchingTest_Adv.f90 RNG.o MC_TimeMarchingTest_Variables.o
-	ifort -traceback -warn stderrors -warn errors -warn all -debug full -module ./obj/ -c ./SourceCodes/MC_TimeMarchingTest_Adv.f90 -o ./obj/MC_TimeMarchingTest_Adv.o
+%.o: ${SRC}${PROJECT}_%.f90
+	${FC} ${FFLAGS} -c $< -o ${OBJ}$*.o
 
-MC_TimeMarchingTest_Main.o: ./SourceCodes/MC_TimeMarchingTest_Main.f90 RNG.o MC_TimeMarchingTest_Variables.o MC_TimeMarchingTest_Adv.o
-	ifort -traceback -warn stderrors -warn errors -warn all -debug full -module ./obj/ -c ./SourceCodes/MC_TimeMarchingTest_Main.f90 -o ./obj/MC_TimeMarchingTest_Main.o
-
+.PHONY: clean
 clean:
-	rm ./obj/*
-	rm ./bin/*
+	@ - rm ${OBJ}*
+	@ - rm ${BIN}*
