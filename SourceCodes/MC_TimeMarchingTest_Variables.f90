@@ -1,9 +1,9 @@
 !!#####################################################################
-!! Module Name: variables
+!! Module Name: VAR
 !! Purpose: Global variable collection.
 !! Author: PY Chuang
 !!#####################################################################
-MODULE variables
+MODULE VAR
 USE RNG
 IMPLICIT NONE
 !----------------------------------------------------------------------
@@ -20,7 +20,8 @@ END TYPE Phonon
 
 TYPE:: Element
     REAL(KIND=8):: BD(2, 3)
-    REAL(KIND=8):: T, E, Ediff
+    REAL(KIND=8):: T, E, N, Eph, Ediff, Vph, MFP
+    INTEGER(KIND=4):: Mat
 END TYPE Element
 
 
@@ -83,4 +84,4 @@ INTEGER(KIND=4):: iter, iter0, iterations
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
-END MODULE variables
+END MODULE VAR
