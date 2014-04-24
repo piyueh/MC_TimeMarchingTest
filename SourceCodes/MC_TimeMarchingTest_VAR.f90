@@ -16,12 +16,14 @@ TYPE:: Phonon
     REAL(KIND=8):: Org(3), Dis(3)
     INTEGER(KIND=4):: Mat
     INTEGER(KIND=4):: eID(3)
+    LOGICAL:: Exist
 END TYPE Phonon
 
 TYPE:: Element
     REAL(KIND=8):: BD(2, 3)
-    REAL(KIND=8):: T, E, N, Eph, Ediff, Vph, MFP
+    REAL(KIND=8):: T, E, ND, Eph, Ediff, Vph, MFP
     INTEGER(KIND=4):: Mat
+    INTEGER(KIND=4):: Ntol, Nbg, Ned
 END TYPE Element
 
 
@@ -58,9 +60,9 @@ REAL(KIND=8), ALLOCATABLE:: Ge_table(:, :), Si_table(:, :)
 !       phID:
 !----------------------------------------------------------------------
 REAL(KIND=8):: bundle
-INTEGER(KIND=4):: Nph
+INTEGER(KIND=4):: RNph, FNph
 TYPE(Phonon), ALLOCATABLE:: phn(:)
-REAL(KIND=8), ALLOCATABLE:: phID(:)
+INTEGER(KIND=4), ALLOCATABLE:: phId(:), EmptyID(:)
 
 
 !----------------------------------------------------------------------
@@ -71,8 +73,17 @@ REAL(KIND=8), ALLOCATABLE:: phID(:)
 !----------------------------------------------------------------------
 REAL(KIND=8):: dL(3), dV
 INTEGER(KIND=4):: Ne(3)
+INTEGER(KIND=4):: NEmpty
 TYPE(Element), ALLOCATABLE:: ele(:, :, :)
-INTEGER(KIND=4), ALLOCATABLE:: N(:, :, :), bg(:, :, :), ed(:, :, :)
+INTEGER(KIND=4), ALLOCATABLE:: NAdd(:, :, :)
+
+
+!----------------------------------------------------------------------
+! Boundary Conditions
+!       BC = 1: Adiabatic
+!            2: Periodic
+!----------------------------------------------------------------------
+INTEGER(KIND=4):: BCs(3)
 
 
 !----------------------------------------------------------------------
@@ -84,9 +95,18 @@ TYPE(rng_t), ALLOCATABLE:: SeedMP(:)
 !----------------------------------------------------------------------
 ! Variable related computation
 !----------------------------------------------------------------------
-REAL(KIND=8):: dt
+REAL(KIND=8):: dt, time
 INTEGER(KIND=4):: NCores
 INTEGER(KIND=4):: iter, iter0, iterations
+
+
+!----------------------------------------------------------------------
+! Variable related to output
+!----------------------------------------------------------------------
+INTEGER(KIND=4):: nOutput, ct
+CHARACTER(LEN=72):: CaseName, OutputFileName
+REAL(KIND=8), ALLOCATABLE:: Tavg(:, :, :), Eavg(:, :, :)
+NAMELIST /Output/ iter, time, ct, L, dL, Ne, Tavg, Eavg
 
 
 !----------------------------------------------------------------------

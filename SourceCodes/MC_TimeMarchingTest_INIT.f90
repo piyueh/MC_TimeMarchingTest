@@ -19,11 +19,11 @@ CONTAINS
 SUBROUTINE initialize
 IMPLICIT NONE
 REAL(KIND=8):: tmpR1
-INTEGER(KIND=4):: Npercell
+INTEGER(KIND=4):: Npercell, bgN, edN
 INTEGER(KIND=4):: tmpI1, Loc(3), i, j, k
-REAL(KIND=8), ALLOCATABLE:: rannum(:, :)
+REAL(KIND=8), ALLOCATABLE:: R(:, :)
 
-    dt = 1D-1
+    time = 0D0
     iter0 = 0
 
     CALL RANDOM_SEED()
@@ -34,122 +34,117 @@ REAL(KIND=8), ALLOCATABLE:: rannum(:, :)
         CALL RNG_SEED( SeedMP(i), INT( tmpR1*1D8 ) )
     ENDDO
 
-    L = (/ 1D3, 1D3, 1D1 /)
-    Ne = (/ 50, 50, 1 /)
+    L = (/ 1D3, 1D1, 1D1 /)
+    Ne = (/ 100, 1, 1 /)
     dL = L / DBLE( Ne )
     dV = dL(1) * dL(2) *dL(3)
 
     ALLOCATE( ele(Ne(1), Ne(2), Ne(3)) )
-    ALLOCATE( N(Ne(1), Ne(2), Ne(3)) )
-    ALLOCATE( bg(Ne(1), Ne(2), Ne(3)) )
-    ALLOCATE( ed(Ne(1), Ne(2), Ne(3)) )
-    ele%T = 330D0
-    ele%Mat = 1
+    ALLOCATE( NAdd(Ne(1), Ne(2), Ne(3)) )
+    ALLOCATE( Tavg(Ne(1), Ne(2), Ne(3)) )
+    ALLOCATE( Eavg(Ne(1), Ne(2), Ne(3)) )
+    
+    ele(1:50, :, :)%T = 200D0
+    ele(51:100, :, :)%T = 400D0
+    ele%Mat = 2
     ele%Ediff = 0D0
     ele%E = 0D0
 
-    DO k = 1, Ne(3)
-        DO j = 1, Ne(2)
-            DO i = 1, Ne(1)
+    DO k = 1, Ne(3); DO j = 1, Ne(2); DO i = 1, Ne(1)
 
-                tmpI1 = ele(i, j, k)%Mat
-                ele(i, j, k)%BD(:, 1) = DBLE( (/ i-1, i /) ) * dL(1)
-                ele(i, j, k)%BD(:, 2) = DBLE( (/ j-1, j /) ) * dL(2)
-                ele(i, j, k)%BD(:, 3) = DBLE( (/ k-1, k /) ) * dL(3)
-                CALL energy( tmpI1, ele(i, j, k)%T, tmpR1 )
-                CALL Etable( tmpI1, 2, tmpR1, ele(i, j, k)%N )
-                ele(i, j, k)%Eph = tmpR1 / ele(i, j, k)%N
-                CALL Etable( tmpI1, 4, tmpR1, ele(i, j, k)%Vph )
-                CALL Etable( tmpI1, 5, tmpR1, ele(i, j, k)%MFP )
+        tmpI1 = ele(i, j, k)%Mat
+        ele(i, j, k)%BD(:, 1) = DBLE( (/ i-1, i /) ) * dL(1)
+        ele(i, j, k)%BD(:, 2) = DBLE( (/ j-1, j /) ) * dL(2)
+        ele(i, j, k)%BD(:, 3) = DBLE( (/ k-1, k /) ) * dL(3)
+        CALL energy( tmpI1, ele(i, j, k)%T, tmpR1 )
+        CALL Etable( tmpI1, 2, tmpR1, ele(i, j, k)%ND )
+        ele(i, j, k)%Eph = tmpR1 / ele(i, j, k)%ND
+        CALL Etable( tmpI1, 4, tmpR1, ele(i, j, k)%Vph )
+        CALL Etable( tmpI1, 5, tmpR1, ele(i, j, k)%MFP )
 
-                N(i, j, k) = INT( ele(i, j, k)%N * dV + 0.5D0 )
+        ele(i, j, k)%Ntol = INT( ele(i, j, k)%ND * dV + 0.5D0 )
 
-            ENDDO
-        ENDDO
-    ENDDO
+    ENDDO; ENDDO; ENDDO
 
-    Npercell = 400
-    Loc = MINLOC( N )
-    bundle = DBLE( N(Loc(1), Loc(2), Loc(3)) ) / DBLE( Npercell )
+    Npercell = 8000
+    Loc = MINLOC( ele%Ntol )
+    bundle = DBLE( ele(Loc(1), Loc(2), Loc(3))%Ntol ) / DBLE( Npercell )
     ele%Eph = ele%Eph * bundle
-    N = INT( DBLE( N ) / bundle + 0.5D0 )
-    Nph = SUM( N )
+    ele%Ntol = INT( DBLE( ele%Ntol ) / bundle + 0.5D0 )
     
-    ALLOCATE( phn(Nph) )
-    ALLOCATE( phID(Nph) )
+    !dt = MINVAL( dL ) / MAXVAL( ele%Vph ) / 2D0
+    dt = 1D0
+    
+    RNph = SUM( ele%Ntol )
+    FNph = RNph * 1.2D0
+    
+    ALLOCATE( phn(FNph) )
+    ALLOCATE( phId(FNph) )
+    ALLOCATE( EmptyID(FNph) )
+    phn%Exist = .FALSE.
+    EmptyID = -1
+    phId = -1
     
     tmpI1 = 0
-    DO k = 1, Ne(3)
-        DO j = 1, Ne(2)
-            DO i = 1, Ne(1)
+    DO k = 1, Ne(3); DO j = 1, Ne(2); DO i = 1, Ne(1)
+     
+        ele(i, j, k)%Nbg = tmpI1 + 1
+        ele(i, j, k)%Ned = tmpI1 + ele(i, j, k)%Ntol
+        bgN = ele(i, j, k)%Nbg
+        edN = ele(i, j, k)%Ned
+     
+        ALLOCATE( R(ele(i, j, k)%Ntol, 5) )
+        CALL RAN_NUM( SeedMP(1), R )
                 
-                ALLOCATE( rannum(N(i, j, k), 5) )
-                CALL RAN_NUM( SeedMP(1), rannum )
-                
-                phn(tmpI1+1:tmpI1+N(i, j, k))%xyz(1) = &
-                           rannum(:, 1) * dL(1) + ele(i, j, k)%BD(1, 1)
-                
-                phn(tmpI1+1:tmpI1+N(i, j, k))%xyz(2) = &
-                           rannum(:, 2) * dL(2) + ele(i, j, k)%BD(1, 2)
-                
-                phn(tmpI1+1:tmpI1+N(i, j, k))%xyz(3) = &
-                           rannum(:, 3) * dL(3) + ele(i, j, k)%BD(1, 3)
+        phn(bgN:edN)%xyz(1) = R(:, 1) * dL(1) + ele(i, j, k)%BD(1, 1)
+        phn(bgN:edN)%xyz(2) = R(:, 2) * dL(2) + ele(i, j, k)%BD(1, 2)
+        phn(bgN:edN)%xyz(3) = R(:, 3) * dL(3) + ele(i, j, k)%BD(1, 3)
                            
-                phn(tmpI1+1:tmpI1+N(i, j, k))%V = ele(i, j, k)%Vph
+        phn(bgN:edN)%V = ele(i, j, k)%Vph
+        phn(bgN:edN)%Vxyz(1) = phn(bgN:edN)%V * DCOS( R(:, 4) * M_PI )
+        phn(bgN:edN)%Vxyz(2) = phn(bgN:edN)%V * &
+                  DSIN( R(:, 4) * M_PI ) * DCOS( R(:, 5) * M_PI * 2D0 )
+        phn(bgN:edN)%Vxyz(3) = phn(bgN:edN)%V * &
+                  DSIN( R(:, 4) * M_PI ) * DSIN( R(:, 5) * M_PI * 2D0 )
                 
-                phn(tmpI1+1:tmpI1+N(i, j, k))%Vxyz(1) = &
-                                    phn(tmpI1+1:tmpI1+N(i, j, k))%V * &
-                                    DCOS( rannum(:, 4) * M_PI )
+        phn(bgN:edN)%E = ele(i, j, k)%Eph
                 
-                phn(tmpI1+1:tmpI1+N(i, j, k))%Vxyz(2) = &
-                                    phn(tmpI1+1:tmpI1+N(i, j, k))%V * &
-                                    DSIN( rannum(:, 4) * M_PI ) * &
-                                    DCOS( rannum(:, 5) * M_PI * 2D0 )
-                                    
-                phn(tmpI1+1:tmpI1+N(i, j, k))%Vxyz(3) = &
-                                    phn(tmpI1+1:tmpI1+N(i, j, k))%V * &
-                                    DSIN( rannum(:, 4) * M_PI ) * &
-                                    DSIN( rannum(:, 5) * M_PI * 2D0 )
+        phn(bgN:edN)%Org(1) = phn(bgN:edN)%xyz(1)
+        phn(bgN:edN)%Org(2) = phn(bgN:edN)%xyz(2)
+        phn(bgN:edN)%Org(3) = phn(bgN:edN)%xyz(3)
                 
-                phn(tmpI1+1:tmpI1+N(i, j, k))%E = ele(i, j, k)%Eph
+        phn(bgN:edN)%Dis(1) = 0D0
+        phn(bgN:edN)%Dis(2) = 0D0
+        phn(bgN:edN)%Dis(3) = 0D0
                 
-                phn(tmpI1+1:tmpI1+N(i, j, k))%Org(1) = &
-                                      phn(tmpI1+1:tmpI1+N(i, j, k))%xyz(1)
-                phn(tmpI1+1:tmpI1+N(i, j, k))%Org(2) = &
-                                      phn(tmpI1+1:tmpI1+N(i, j, k))%xyz(2)
-                phn(tmpI1+1:tmpI1+N(i, j, k))%Org(3) = &
-                                      phn(tmpI1+1:tmpI1+N(i, j, k))%xyz(3)
+        phn(bgN:edN)%Mat = ele(i, j, k)%Mat
                 
-                phn(tmpI1+1:tmpI1+N(i, j, k))%Dis(1) = 0D0
-                phn(tmpI1+1:tmpI1+N(i, j, k))%Dis(2) = 0D0
-                phn(tmpI1+1:tmpI1+N(i, j, k))%Dis(3) = 0D0
+        phn(bgN:edN)%eID(1) = i
+        phn(bgN:edN)%eID(2) = j
+        phn(bgN:edN)%eID(3) = k
+        
+        phn(bgN:edN)%Exist = .TRUE.
+        
+        DEALLOCATE( R )
                 
-                phn(tmpI1+1:tmpI1+N(i, j, k))%Mat = ele(i, j, k)%Mat
+        CALL energy( ele(i, j, k)%Mat, ele(i, j, k)%T, tmpR1 )
+        ele(i, j, k)%E = SUM( phn(bgN:edN)%E )
+        ele(i, j, k)%Ediff = tmpR1 * dV - ele(i, j, k)%E
                 
-                phn(tmpI1+1:tmpI1+N(i, j, k))%eID(1) = i
-                phn(tmpI1+1:tmpI1+N(i, j, k))%eID(2) = j
-                phn(tmpI1+1:tmpI1+N(i, j, k))%eID(3) = k
-                
-                DEALLOCATE( rannum )
-                
-                CALL energy( ele(i, j, k)%Mat, ele(i, j, k)%T, tmpR1 )
-                ele(i, j, k)%E = SUM( phn(tmpI1+1:tmpI1+N(i, j, k))%E )
-                ele(i, j, k)%Ediff = tmpR1 * dV - ele(i, j, k)%E
-                
-                bg(i, j, k) = tmpI1 + 1
-                ed(i, j, k) = tmpI1 + N(i, j, k)
-                
-                tmpI1 = tmpI1 + N(i, j, k)
-            ENDDO
-        ENDDO
-    ENDDO
+        tmpI1 = tmpI1 + ele(i, j, k)%Ntol
+        
+    ENDDO; ENDDO; ENDDO
     
-    FORALL( i = 1:10 ) phID(i) = i
+    FORALL( i=1:RNph ) phId(i) = i
     
-    IF ( tmpI1.ne.Nph ) CALL Errors( 1 )
-    IF ( ed(Ne(1), Ne(2), Ne(3)).ne.Nph ) CALL Errors( 2 )
+    IF ( tmpI1.ne.RNph ) CALL Errors( 1 )
+    IF ( ele(Ne(1), Ne(2), Ne(3))%Ned.ne.RNph ) CALL Errors( 2 )
     
-    WRITE(*, *) "Total number of phonons: ", Nph
+    WRITE(*, *) "Total number of phonons: ", RNph
+    WRITE(*, *) "The size of phonon array: ", FNph
+    WRITE(*, *) "Bundle: ", bundle
+    WRITE(*, *) "The Energy of Phonon Bundle: ", MINVAL( ele%Eph )
+    WRITE(*, *) "dt: ", dt
 
 END SUBROUTINE initialize
 
