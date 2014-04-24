@@ -1,0 +1,17 @@
+README:
+
+PROJECT PURPOSE:
+    
+    1. Re-develope the 3D Monte-Carlo (MC) solver, using 3D structured, for Phonon Boltzmann Transport Equation (PBTE) applying better schemes, which were developed during the development of the MC solver for 3D unstructured grids.
+    
+    2. Test another time-marching scheme, which is usually used in MC simulations of electrons.
+
+STATUS (04/24/2014):
+    
+    FINISHED:
+
+        Currently, it can be used to solve transient problems under single material without nano-structure and with adiabatic and perodic BCs.
+        
+    FUTURE WORK:
+        
+        Implement another time-marching scheme.
