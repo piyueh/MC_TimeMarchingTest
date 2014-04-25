@@ -14,7 +14,7 @@ INTEGER(KIND=4):: mt, i, j, k
 
     CaseName = "Test"
 
-    BCs = (/ 1, 2, 2 /)
+    BCs = (/ 2, 2, 2 /)
     
     NCores = 1
     iterations = 20000000
@@ -52,10 +52,18 @@ INTEGER(KIND=4):: mt, i, j, k
             
             ct = 0
             Eavg = 0
+            
+            WRITE(OutputFileName, "(I8.8, '_Transient.txt')") iter
+            OPEN( UNIT = 150, FILE = OutputFileName )
+            WRITE(150, *) time
+            WRITE(150, *) ele(:, 1, 1)%T
+            CLOSE( 150 )
         ENDIF
         
-        WRITE(*, *) iter, RNph, SUM( ele%E ) / DBLE( PRODUCT( Ne ) ), &
-                    SUM( ele%T ) / DBLE( PRODUCT( Ne ) )
+        WRITE(*, *) iter, RNph !, &
+             !INT( SUM( ele%T ) / DBLE( PRODUCT( Ne ) ) * 100 ) / 100, &
+             !INT( MAXVAL( ele%T ) * 100 + 0.5 ) / 100, &
+             !INT( MINVAL( ele%T ) * 100 + 0.5 ) / 100
         
     ENDDO
 

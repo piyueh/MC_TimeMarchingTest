@@ -293,7 +293,7 @@ INTEGER(KIND=4):: tmpI1, tmpI2
         phm%xyz(tmpI1) = 0D0
         phm%eID(tmpI1) = 1
     CASE(-1)
-        IF ( phm%eID(tmpI1).ne.Ne(tmpI1) ) CALL Errors(10)
+        IF ( phm%eID(tmpI1).ne.1 ) CALL Errors(10)
         phm%xyz(tmpI1) = L(tmpI1)
         phm%eID(tmpI1) = Ne(tmpI1)
     END SELECT

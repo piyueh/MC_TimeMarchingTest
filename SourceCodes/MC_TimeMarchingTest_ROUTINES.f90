@@ -25,18 +25,20 @@ INTEGER(KIND=4):: i, j, k, tmpI1, mt
     ele%Ntol = 0
     EmptyID = -1
     phId = -1
+    i = 0
     
-    DO i = 1, FNph
-        IF ( phn(i)%Exist ) THEN
-            ele(phn(i)%eID(1), phn(i)%eID(2), phn(i)%eID(3))%Ntol = &
-              ele(phn(i)%eID(1), phn(i)%eID(2), phn(i)%eID(3))%Ntol + 1
+    DO tmpI1 = 1, FNph
+        IF ( phn(tmpI1)%Exist ) THEN
+            i = phn(tmpI1)%eID(1)
+            j = phn(tmpI1)%eID(2)
+            k = phn(tmpI1)%eID(3)
             
-            ele(phn(i)%eID(1), phn(i)%eID(2), phn(i)%eID(3))%E = &
-                 ele(phn(i)%eID(1), phn(i)%eID(2), phn(i)%eID(3))%E + &
-                 phn(i)%E
+            ele(i, j, k)%Ntol = ele(i, j, k)%Ntol + 1
+            
+            ele(i, j, k)%E = ele(i, j, k)%E + phn(tmpI1)%E
         ELSE
             NEmpty = NEmpty + 1
-            EmptyID(NEmpty) = i
+            EmptyID(NEmpty) = tmpI1
         ENDIF
     ENDDO
     

@@ -35,7 +35,7 @@ REAL(KIND=8), ALLOCATABLE:: R(:, :)
     ENDDO
 
     L = (/ 1D3, 1D1, 1D1 /)
-    Ne = (/ 100, 1, 1 /)
+    Ne = (/ 100, 4, 4 /)
     dL = L / DBLE( Ne )
     dV = dL(1) * dL(2) *dL(3)
 
@@ -66,7 +66,7 @@ REAL(KIND=8), ALLOCATABLE:: R(:, :)
 
     ENDDO; ENDDO; ENDDO
 
-    Npercell = 8000
+    Npercell = 8000 / 16
     Loc = MINLOC( ele%Ntol )
     bundle = DBLE( ele(Loc(1), Loc(2), Loc(3))%Ntol ) / DBLE( Npercell )
     ele%Eph = ele%Eph * bundle
