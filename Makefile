@@ -2,7 +2,7 @@
 FC = ifort
 PROJECT = MC_TimeMarchingTest
 #FFLAGS = -O0 -g -traceback -check all -fp-stack-check -warn all -debug full -module ${OBJ}
-FFLAGS = -O3 -ipo -fast -inline-level=2 -module ${OBJ}
+FFLAGS = -fast -inline-level=2 -module ${OBJ}
 SRC = ./SourceCodes/
 BIN = ./bin/
 OBJ = ./obj/

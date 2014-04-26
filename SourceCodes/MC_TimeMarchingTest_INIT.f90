@@ -73,7 +73,7 @@ REAL(KIND=8), ALLOCATABLE:: R(:, :)
     ele%Ntol = INT( DBLE( ele%Ntol ) / bundle + 0.5D0 )
     
     !dt = MINVAL( dL ) / MAXVAL( ele%Vph ) / 2D0
-    dt = 1D0
+    dt = 0.25D0
     
     RNph = SUM( ele%Ntol )
     FNph = RNph * 1.2D0
@@ -95,17 +95,29 @@ REAL(KIND=8), ALLOCATABLE:: R(:, :)
      
         ALLOCATE( R(ele(i, j, k)%Ntol, 5) )
         CALL RAN_NUM( SeedMP(1), R )
+        
+        !--------------------------------------------------------------
+        ! R(:, 4) = COS(theta) => SIN(theta) = (1-R(:, 4)**2)**0.5
+        ! R(:, 5) = phi
+        ! Vx = V * COS(theta)
+        ! Vy = V * SIN(theta) * COS(phi)
+        ! Vz = V * SIN(theta) * SIN(phi)
+        !--------------------------------------------------------------
+        R(:, 4) = 2D0 * R(:, 4) - 1D0
+        R(:, 5) = R(:, 5) * M_PI * 2D0
+        
                 
         phn(bgN:edN)%xyz(1) = R(:, 1) * dL(1) + ele(i, j, k)%BD(1, 1)
         phn(bgN:edN)%xyz(2) = R(:, 2) * dL(2) + ele(i, j, k)%BD(1, 2)
         phn(bgN:edN)%xyz(3) = R(:, 3) * dL(3) + ele(i, j, k)%BD(1, 3)
                            
         phn(bgN:edN)%V = ele(i, j, k)%Vph
-        phn(bgN:edN)%Vxyz(1) = phn(bgN:edN)%V * DCOS( R(:, 4) * M_PI )
+        
+        phn(bgN:edN)%Vxyz(1) = phn(bgN:edN)%V * R(:, 4)
         phn(bgN:edN)%Vxyz(2) = phn(bgN:edN)%V * &
-                  DSIN( R(:, 4) * M_PI ) * DCOS( R(:, 5) * M_PI * 2D0 )
+                              DSQRT(1D0 - R(:, 4)**2) * DCOS( R(:, 5) )
         phn(bgN:edN)%Vxyz(3) = phn(bgN:edN)%V * &
-                  DSIN( R(:, 4) * M_PI ) * DSIN( R(:, 5) * M_PI * 2D0 )
+                              DSQRT(1D0 - R(:, 4)**2) * DSIN( R(:, 5) )
                 
         phn(bgN:edN)%E = ele(i, j, k)%Eph
                 

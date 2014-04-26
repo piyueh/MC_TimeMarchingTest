@@ -11,14 +11,16 @@ CONTAINS
 !----------------------------------------------------------------------
 ! Phonon Advance Subroutine - Controller
 !----------------------------------------------------------------------
-SUBROUTINE advance
+SUBROUTINE advance( t )
 USE VAR
 USE ROUTINES, ONLY: Reorder_CellInfo
-REAL(KIND=8):: dtRemain
+REAL(KIND=8):: dtRemain, t(4)
 INTEGER(KIND=4):: iCPU, i
 
     iCPU = 1
-
+    
+    CALL CPU_TIME( t(1) )
+    
     DO i = 1, FNph
         IF ( phn(i).Exist ) THEN
             dtRemain = dt
@@ -27,9 +29,14 @@ INTEGER(KIND=4):: iCPU, i
             ENDDO
         ENDIF
     ENDDO
-
+    
+    CALL CPU_TIME( t(2) )
     CALL Reorder_CellInfo
+    
+    CALL CPU_TIME( t(3) )
     CALL CreateDelete( SeedMP(iCPU) )
+    
+    CALL CPU_TIME( t(4) )
 
 END SUBROUTINE advance
 
@@ -168,15 +175,22 @@ LOGICAL:: TF
 
     IF ( rannum(1).le.prob ) THEN
 
-        tmpR1 = rannum(2) * M_PI
+        tmpR1 = 2D0 * rannum(2) - 1D0
         tmpR2 = rannum(3) * M_PI * 2D0
+        !--------------------------------------------------------------
+        ! tmpR1 = COS(theta) => SIN(theta) = (1-tmpR1**2)**0.5
+        ! tmpR2 = phi
+        ! Vx = V * COS(theta)
+        ! Vy = V * SIN(theta) * COS(phi)
+        ! Vz = V * SIN(theta) * SIN(phi)
+        !--------------------------------------------------------------
 
         ele(tmpI1, tmpI2, tmpI3)%Ediff = &
                                    ele(tmpI1, tmpI2, tmpI3)%Ediff + &
                                    phm%E - ele(tmpI1, tmpI2, tmpI3)%Eph
         phm%V = ele(tmpI1, tmpI2, tmpI3)%Vph
-        phm%Vxyz(1) = phm%V * DCOS( tmpR1 )
-        phm%Vxyz(2:3) = phm%V * DSIN( tmpR1 ) * &
+        phm%Vxyz(1) = phm%V * tmpR1
+        phm%Vxyz(2:3) = phm%V * DSQRT(1D0 - tmpR1**2) * &
                                      (/ DCOS( tmpR2 ), DSIN( tmpR2 ) /)
         phm%E = ele(tmpI1, tmpI2, tmpI3)%Eph
         phm%Mat = ele(tmpI1, tmpI2, tmpI3)%Mat
@@ -241,32 +255,56 @@ TYPE(rng_t), INTENT(INOUT):: Rseed
 REAL(KIND=8):: tmpR1, tmpR2
 INTEGER(KIND=4):: tmpI1
 
+    !------------------------------------------------------------------
+    ! V = (+ or -) (r1**0.5) * n + 
+    !     [(1 - r1)**0.5] * COS(2 * pi * r2) * t1 + 
+    !     [(1 - r1)**0.5] * SIN(2 * pi * r2) * t1
+    !
+    ! 1. r1 & r2 are uniform random numbers in [0, 1].
+    ! 2. n is normal vector of element face
+    ! 3. t1 & t2 are two unit vectors located on the element surface
+    !    and perpendicular to each other
+    ! 4. '+' or '-' depend on reflection of transmission occurs
+    ! 5. For example, in cubic elements, if hit = 1, 
+    !    then the n = ( 1, 0, 0); t1 = (0, 1, 0); t2 = (0, 0, 1)
+    !    and use '-' for reflection. Therefore:
+    !      
+    !    (Vx, Vy, Vz) = -r1^0.5 * (1, 0, 0) + 
+    !                   (1-r1)^0.5 * cos(2pi*r2) * (0, 1, 0) +
+    !                   (1-r1)^0.5 * sin(2pi*r2) * (0, 0, 1)
+    !--------------------------------------------------------------
+
     CALL RAN_NUM( Rseed, tmpR1 )
     CALL RAN_NUM( Rseed, tmpR2 )
 
     tmpI1 = ISIGN( 1, hit )
     SELECTCASE( tmpI1)
     CASE(1)
-        tmpR1 = - DSQRT( tmpR1 )!(tmpR1 + 1D0) * M_PI / 2D0
+        tmpR1 = - DSQRT( tmpR1 )
     CASE(-1)
-        tmpR1 = DSQRT( tmpR1 ) !tmpR1 * M_PI / 2D0
+        tmpR1 = DSQRT( tmpR1 )
     ENDSELECT
     tmpR2 = tmpR2 * M_PI * 2D0
+    
+    !------------------------------------------------------------------
+    ! tmpR1 = (+ or -) r1^0.5
+    ! tmpR2 = 2 * pi * r2
+    !------------------------------------------------------------------
 
     tmpI1 = IABS( hit )
     SELECTCASE( tmpI1 )
     CASE(1)
-        phm%Vxyz(1) = phm%V * tmpR1 !DCOS( tmpR1 )
-        phm%Vxyz(2) = phm%V * DSQRT( 1D0 - tmpR1 ) * DCOS( tmpR2 ) !DSIN( tmpR1 ) * DCOS( tmpR2 )
-        phm%Vxyz(3) = phm%V * DSQRT( 1D0 - tmpR1 ) * DSIN( tmpR2 ) !DSIN( tmpR1 ) * DSIN( tmpR2 )
+        phm%Vxyz(1) = phm%V * tmpR1
+        phm%Vxyz(2) = phm%V * DSQRT( 1D0 - tmpR1**2 ) * DCOS( tmpR2 )
+        phm%Vxyz(3) = phm%V * DSQRT( 1D0 - tmpR1**2 ) * DSIN( tmpR2 )
     CASE(2)
-        phm%Vxyz(1) = phm%V * DSIN( tmpR1 ) * DCOS( tmpR2 )
-        phm%Vxyz(2) = phm%V * DCOS( tmpR1 )
-        phm%Vxyz(3) = phm%V * DSIN( tmpR1 ) * DSIN( tmpR2 )
+        phm%Vxyz(1) = phm%V * DSQRT( 1D0 - tmpR1**2 ) * DCOS( tmpR2 )
+        phm%Vxyz(2) = phm%V * tmpR1
+        phm%Vxyz(3) = phm%V * DSQRT( 1D0 - tmpR1**2 ) * DSIN( tmpR2 )
     CASE(3)
-        phm%Vxyz(3) = phm%V * DCOS( tmpR1 )
-        phm%Vxyz(2) = phm%V * DSIN( tmpR1 ) * DCOS( tmpR2 )
-        phm%Vxyz(1) = phm%V * DSIN( tmpR1 ) * DSIN( tmpR2 )
+        phm%Vxyz(3) = phm%V * tmpR1
+        phm%Vxyz(2) = phm%V * DSQRT( 1D0 - tmpR1**2 ) * DCOS( tmpR2 )
+        phm%Vxyz(1) = phm%V * DSQRT( 1D0 - tmpR1**2 ) * DSIN( tmpR2 )
     ENDSELECT
 
 END SUBROUTINE Diffused
@@ -373,6 +411,9 @@ INTEGER(KIND=4):: NAddTol
                 s2 = s1 + NAdd(i, j, k) - 1
 
                 ALLOCATE( R(NAdd(i, j, k), 5) )
+                
+                R(:, 4) = 2D0 * R(:, 4) - 1D0
+                R(:, 5) = R(:, 5) * M_PI * 2D0
 
                 phn(EmptyID(s1:s2))%xyz(1) = R(:, 1) * dL(1) + &
                                              ele(i, j, k)%BD(1, 1)
@@ -382,12 +423,13 @@ INTEGER(KIND=4):: NAddTol
                                              ele(i, j, k)%BD(1, 3)
 
                 phn(EmptyID(s1:s2))%V = ele(i, j, k)%Vph
-                phn(EmptyID(s1:s2))%Vxyz(1) = phn(EmptyID(s1:s2))%V * &
-                                              DCOS( R(:, 4) * M_PI )
+                
+                phn(EmptyID(s1:s2))%Vxyz(1) = &
+                                        phn(EmptyID(s1:s2))%V * R(:, 4)
                 phn(EmptyID(s1:s2))%Vxyz(2) = phn(EmptyID(s1:s2))%V * &
-                  DSIN( R(:, 4) * M_PI ) * DCOS( R(:, 5) * M_PI * 2D0 )
+                              DSQRT(1D0 - R(:, 4)**2) * DCOS( R(:, 5) )
                 phn(EmptyID(s1:s2))%Vxyz(3) = phn(EmptyID(s1:s2))%V * &
-                  DSIN( R(:, 4) * M_PI ) * DSIN( R(:, 5) * M_PI * 2D0 )
+                              DSQRT(1D0 - R(:, 4)**2) * DSIN( R(:, 5) )
 
                 phn(EmptyID(s1:s2))%E = ele(i, j, k)%Eph
 
