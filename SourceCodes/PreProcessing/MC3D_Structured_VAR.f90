@@ -1,6 +1,6 @@
 !!#####################################################################
 !! Projrct: 3D Monte-Carlo Simulator Using Structured Grids
-!! Program: Pre-processing
+!! Program: Solver
 !! File Name: MC3D_Structured_VAR
 !! Contenent: Collections of Public Variables
 !! Author: PY Chuang
@@ -74,6 +74,7 @@ INTEGER(KIND=4), ALLOCATABLE:: phId(:), EmptyID(:)
 REAL(KIND=8):: dL(3), dV
 INTEGER(KIND=4):: Ne(3)
 INTEGER(KIND=4):: NEmpty
+INTEGER(KIND=8):: iMid
 TYPE(Element), ALLOCATABLE:: ele(:, :, :)
 INTEGER(KIND=4), ALLOCATABLE:: NAdd(:, :, :)
 
@@ -82,6 +83,7 @@ INTEGER(KIND=4), ALLOCATABLE:: NAdd(:, :, :)
 ! Boundary Conditions
 !       BC = 1: Adiabatic
 !            2: Periodic
+!            3: Heat control
 !----------------------------------------------------------------------
 REAL(KIND=8):: TBCL, TBCR
 INTEGER(KIND=4):: BCs(3)
@@ -93,7 +95,6 @@ INTEGER(KIND=4):: BCs(3)
 REAL(KIND=8):: QBCL, QBCR
 REAL(KIND=8):: qfluxL, qfluxC, qfluxR
 REAL(KIND=8):: VBCL(2), VBCR(2), EBCL(2), EBCR(2)
-INTEGER(KIND=8):: iMid
 REAL(KIND=8), ALLOCATABLE:: EinjectL(:, :), EinjectR(:, :)
 REAL(KIND=8), ALLOCATABLE:: qL(:, :), qC(:, :), qR(:, :)
 
@@ -121,7 +122,6 @@ INTEGER(KIND=4), ALLOCATABLE:: iNPoolL(:, :), iNPoolR(:, :)
 ! Variable related computation
 !----------------------------------------------------------------------
 REAL(KIND=8):: dt, time
-INTEGER(KIND=4):: NCores
 INTEGER(KIND=4):: iter, iter0, iterations
 
 

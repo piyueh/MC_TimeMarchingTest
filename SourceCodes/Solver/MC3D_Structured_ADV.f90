@@ -6,16 +6,17 @@
 MODULE ADV
 USE RNG
 IMPLICIT NONE
-CONTAINS
+ CONTAINS
 !======================================================================
 !----------------------------------------------------------------------
 ! Phonon Advance Subroutine - Controller
 !----------------------------------------------------------------------
-SUBROUTINE advance( t )
+SUBROUTINE advance( NCores, SeedMP, t )
 USE VAR
 USE ROUTINES, ONLY: Reorder_CellInfo
 REAL(KIND=8):: dtRemain, t(4)
-INTEGER(KIND=4):: iCPU, i
+INTEGER(KIND=4):: NCores, iCPU, i
+TYPE(rng_t):: SeedMP(NCores)
 
     iCPU = 1
     

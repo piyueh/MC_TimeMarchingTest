@@ -23,7 +23,8 @@ INTEGER(KIND=4):: Npercell
     iter0 = 0
 
     WRITE(*, '("Enter CASE Name: ")', ADVANCE = 'NO')
-    READ(*, *) CaseName
+    !READ(*, *) CaseName
+    CaseName = "Adiabatic_Transien_Ge"
     InputFileName = casename(1:LEN_TRIM(casename))//'_initial.txt'
     
     WRITE(*, '("Enter Domain, Lx, Ly, Lz: ")', ADVANCE = 'NO')
@@ -103,7 +104,13 @@ INTEGER(KIND=4):: i, j, k, tmpI1, Loc(3), NperCell
     bundle = DBLE( ele(Loc(1), Loc(2), Loc(3))%Ntol ) / DBLE( NperCell )
     ele%Eph = ele%Eph * bundle
     ele%Ntol = INT( DBLE( ele%Ntol ) / bundle + 0.5D0 )
-
+    ele%E = ele%Eph * ele%Ntol
+    
+    DO k = 1, Ne(3); DO j = 1, Ne(2); DO i = 1, Ne(1)
+        CALL energy( tmpI1, ele(i, j, k)%T, tmpR1 )
+        ele(i, j, k)%Ediff = tmpR1 * dV - ele(i, j, k)%E
+    ENDDO; ENDDO; ENDDO
+    
     !==========================================================
     CONTAINS
     !----------------------------------------------------------
@@ -123,7 +130,7 @@ INTEGER(KIND=4):: i, j, k, tmpI1, Loc(3), NperCell
     SUBROUTINE Initial_Material
     IMPLICIT NONE
 
-        ele%Mat = 2
+        ele%Mat = 1
 
     END SUBROUTINE Initial_Material
     !==========================================================
@@ -138,8 +145,18 @@ END SUBROUTINE Initialize_Mesh
 SUBROUTINE dt_setup
 USE VAR
 IMPLICIT NONE
+CHARACTER:: YN
 
-    dt = MINVAL( dL ) / MAXVAL( ele%Vph ) / 2D0
+    !dt = MINVAL( dL ) / MAXVAL( ele%Vph ) / 2D0
+    !
+    !WRITE(*, '("Current dt is: ", F)', ADVANCE = 'NO') dt 
+    !WRITE(*, '("Modify dt Manually? (Y/N): ")', ADVANCE = 'NO')
+    !READ(*, *) YN
+    !IF ( YN.eq.'Y' ) THEN
+    !    WRITE(*, '("Enter the New dt: ")', ADVANCE = 'NO')
+    !    READ(*, *) dt
+    !ENDIF
+    dt = 1D0
 
 END SUBROUTINE dt_setup
 
