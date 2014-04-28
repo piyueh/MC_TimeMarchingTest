@@ -2,8 +2,8 @@
 FC = ifort
 PROJECT = MC3D_Structured_
 PROGRAM = PreProcessing
-FFLAGS = -O0 -g -traceback -check all -fp-stack-check -warn all -debug full -module ${OBJ}${PROGRAM}/
-#FFLAGS = -fast -inline-level=2 -module ${OBJ}${PROGRAM}/
+#FFLAGS = -O0 -g -traceback -check all -fp-stack-check -warn all -debug full -module ${OBJ}${PROGRAM}/
+FFLAGS = -fast -inline-level=2 -module ${OBJ}${PROGRAM}/
 BIN = ../../bin/
 OBJ = ../../obj/
 INC = -I ../../lib/

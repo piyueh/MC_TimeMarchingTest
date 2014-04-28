@@ -146,7 +146,7 @@ END SUBROUTINE Initialize_Mesh
 SUBROUTINE TimeStep_setup
 USE VAR
 IMPLICIT NONE
-CHARACTER:: YN
+!CHARACTER:: YN
 
     !TimeStep = MINVAL( dL ) / MAXVAL( ele%Vph ) / 2D0
     !

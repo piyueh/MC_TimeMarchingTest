@@ -30,7 +30,7 @@ TYPE(rng_t):: SeedMP(NCores)
                 CASE(1)
                     CALL phn_adv_CT( phn(i), SeedMP(iCPU), dtRemain )
                 CASE(2)
-                    CALL pgn_adv_RT( phn(i), SeedMP(iCPU), dtRemain )
+                    CALL phn_adv_RT( phn(i), SeedMP(iCPU), dtRemain )
                 END SELECT
             ENDDO
         ENDIF
@@ -49,11 +49,74 @@ END SUBROUTINE advance
 
 !======================================================================
 !----------------------------------------------------------------------
-! Phonon Advance Subroutine - Single Time
+! Phonon Advance Subroutine - Random Free Flight Time
+!----------------------------------------------------------------------
+SUBROUTINE phn_adv_RT( phm, RSeed, dtRemain )
+USE VAR, ONLY: Phonon, Element, ele, BCs, GammaT
+USE ROUTINES, ONLY: FreeFlightTime
+IMPLICIT NONE
+TYPE(Phonon), INTENT(INOUT):: phm
+REAL(KIND=8), INTENT(INOUT):: dtRemain
+TYPE(rng_t), INTENT(INOUT):: RSeed
+REAL(KIND=8):: dt(3), R
+INTEGER(KIND=4):: hit, Loc(1)
+INTEGER(KIND=4):: I1, I2, I3
+LOGICAL:: TF
+
+    dt(1) = dtRemain
+    CALL FreeFlightTime( dt(2), Rseed )
+    CALL hit_ElementSurface( phm, dt(3), hit )
+    
+    Loc = MINLOC( dt )
+    
+    SELECTCASE( Loc(1) )
+    CASE(1)
+        phm%xyz = phm%xyz + dtRemain * phm%Vxyz
+        dtRemain = 0D0
+    CASE(2)
+        I1 = phm%eID(1)
+        I2 = phm%eID(2)
+        I3 = phm%eID(3)
+        phm%xyz = phm%xyz + dt(2) * phm%Vxyz
+        dtRemain = dtRemain - dt(2)
+        
+        CALL RAN_NUM( Rseed, R )
+        R = R * GammaT
+        IF ( R.le.ele(I1, I2, I3)%SCR ) &
+                    CALL intrinsic_scattering( phm, Rseed, I1, I2, I3 )
+    CASE(3)
+        I1 = phm%eID(1)
+        I2 = phm%eID(2)
+        I3 = phm%eID(3)
+        phm%xyz = phm%xyz + dt(3) * phm%Vxyz
+        phm%xyz(IABS( hit )) = &
+                 ele(I1, I2, I3)%BD((ISIGN(1, hit)+1)/2+1, IABS( hit ))
+        dtRemain = dtRemain - dt(3)
+
+        CALL outDomain( phm, hit, TF )
+
+        SELECTCASE( TF )
+        CASE(.TRUE.)
+            SELECTCASE( BCs(IABS( hit )) )
+            CASE(1)
+                CALL Diffused( phm, hit, Rseed )
+            CASE(2)
+                CALL Perodic( phm, hit )
+            END SELECT
+        CASE(.FALSE.)
+            phm%eID(IABS( hit )) = phm%eID(IABS( hit )) + ISIGN(1, hit)
+        ENDSELECT
+    ENDSELECT
+
+END SUBROUTINE phn_adv_RT
+
+
+!======================================================================
+!----------------------------------------------------------------------
+! Phonon Advance Subroutine - Constant Free Flight Time
 !----------------------------------------------------------------------
 SUBROUTINE phn_adv_CT( phm, RSeed, dtRemain )
 USE VAR, ONLY: Phonon, Element, ele, BCs
-USE RNG
 IMPLICIT NONE
 TYPE(Phonon), INTENT(INOUT):: phm
 REAL(KIND=8), INTENT(INOUT):: dtRemain
@@ -69,7 +132,7 @@ LOGICAL:: TF
         dtUsed = dtRemain
         dtRemain = 0D0
         phm%xyz = phm%xyz + dtUsed * phm%Vxyz
-        CALL intrinsic_scattering( phm, dtUsed, Rseed, TF )
+        CALL Adjust_scattering( phm, dtUsed, Rseed, TF )
 
     ELSEIF ( dtUsed.le.dtRemain ) THEN
 
@@ -81,7 +144,7 @@ LOGICAL:: TF
                                        IABS( hit ))
         dtRemain = dtRemain - dtUsed
 
-        CALL intrinsic_scattering( phm, dtUsed, Rseed, TF )
+        CALL Adjust_scattering( phm, dtUsed, Rseed, TF )
         ! TF =
         !   true: scattering occured. The phonon may or may not
         !         continue going through the element surface.
@@ -157,53 +220,68 @@ END SUBROUTINE hit_ElementSurface
 
 !======================================================================
 !----------------------------------------------------------------------
-! Phonon Intrinsic Scattering
+! Adjust Whether Intrinsic Scattering Occurs
 !----------------------------------------------------------------------
-SUBROUTINE intrinsic_scattering( phm, dt, Rseed, TF )
-USE VAR, ONLY: Phonon, Element, ele, M_PI
+SUBROUTINE Adjust_scattering( phm, dt, Rseed, TF )
+USE VAR, ONLY: Phonon, Element, ele
 IMPLICIT NONE
 TYPE(Phonon), INTENT(INOUT):: phm
 TYPE(rng_t), INTENT(INOUT):: RSeed
 REAL(KIND=8), INTENT(IN):: dt
-REAL(KIND=8):: rannum(3), prob
-REAL(KIND=8):: tmpR1, tmpR2
+REAL(KIND=8):: prob, R1
 INTEGER(KIND=4):: tmpI1, tmpI2, tmpI3
 LOGICAL:: TF
-
-    TF = .FALSE.
 
     tmpI1 = phm%eID(1)
     tmpI2 = phm%eID(2)
     tmpI3 = phm%eID(3)
 
     prob = 1D0 - DEXP( -dt * phm%V / ele(tmpI1, tmpI2, tmpI3)%MFP )
-    CALL RAN_NUM( Rseed, rannum )
-
-    IF ( rannum(1).le.prob ) THEN
-
-        tmpR1 = 2D0 * rannum(2) - 1D0
-        tmpR2 = rannum(3) * M_PI * 2D0
-        !--------------------------------------------------------------
-        ! tmpR1 = COS(theta) => SIN(theta) = (1-tmpR1**2)**0.5
-        ! tmpR2 = phi
-        ! Vx = V * COS(theta)
-        ! Vy = V * SIN(theta) * COS(phi)
-        ! Vz = V * SIN(theta) * SIN(phi)
-        !--------------------------------------------------------------
-
-        ele(tmpI1, tmpI2, tmpI3)%Ediff = &
-                                   ele(tmpI1, tmpI2, tmpI3)%Ediff + &
-                                   phm%E - ele(tmpI1, tmpI2, tmpI3)%Eph
-        phm%V = ele(tmpI1, tmpI2, tmpI3)%Vph
-        phm%Vxyz(1) = phm%V * tmpR1
-        phm%Vxyz(2:3) = phm%V * DSQRT(1D0 - tmpR1**2) * &
-                                     (/ DCOS( tmpR2 ), DSIN( tmpR2 ) /)
-        phm%E = ele(tmpI1, tmpI2, tmpI3)%Eph
-        phm%Mat = ele(tmpI1, tmpI2, tmpI3)%Mat
-
+    
+    CALL RAN_NUM( Rseed, R1 )
+    
+    IF ( R1.le.prob ) THEN
         TF = .TRUE.
-
+        CALL intrinsic_scattering( phm, Rseed, tmpI1, tmpI2, tmpI3 )
+    ELSE
+        TF = .FALSE.
     ENDIF
+
+
+END SUBROUTINE Adjust_scattering
+!======================================================================
+!----------------------------------------------------------------------
+! Phonon Intrinsic Scattering
+!----------------------------------------------------------------------
+SUBROUTINE intrinsic_scattering( phm, Rseed, I1, I2, I3 )
+USE VAR, ONLY: Phonon, Element, ele, M_PI
+IMPLICIT NONE
+TYPE(Phonon), INTENT(INOUT):: phm
+TYPE(rng_t), INTENT(INOUT):: RSeed
+REAL(KIND=8):: R1, R2
+INTEGER(KIND=4):: I1, I2, I3
+
+    CALL RAN_NUM( Rseed, R1 )
+    CALL RAN_NUM( Rseed, R2 )
+
+    R1 = 2D0 * R1 - 1D0
+    R2 = R2 * M_PI * 2D0
+    !--------------------------------------------------------------
+    ! R1 = COS(theta) => SIN(theta) = (1-R1**2)**0.5
+    ! R2 = phi
+    ! Vx = V * COS(theta)
+    ! Vy = V * SIN(theta) * COS(phi)
+    ! Vz = V * SIN(theta) * SIN(phi)
+    !--------------------------------------------------------------
+
+    ele(I1, I2, I3)%Ediff = ele(I1, I2, I3)%Ediff + &
+                                        phm%E - ele(I1, I2, I3)%Eph
+    phm%V = ele(I1, I2, I3)%Vph
+    phm%Vxyz(1) = phm%V * R1
+    phm%Vxyz(2:3) = phm%V * DSQRT(1D0 - R1**2) * &
+                                        (/ DCOS( R2 ), DSIN( R2 ) /)
+    phm%E = ele(I1, I2, I3)%Eph
+    phm%Mat = ele(I1, I2, I3)%Mat
 
 END SUBROUTINE intrinsic_scattering
 

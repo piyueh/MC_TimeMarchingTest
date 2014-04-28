@@ -53,9 +53,13 @@ TYPE(rng_t), ALLOCATABLE:: SeedMP(:)
 
     CALL initialize
 
+    IF ( WAY_FlightTime.eq.2 ) CALL Pseudo_ScatteringRate
+    
     CALL Reorder_CellInfo
 
     CALL CreateDelete( SeedMP(1) )
+    
+    
 
     CALL Output_Trans
 

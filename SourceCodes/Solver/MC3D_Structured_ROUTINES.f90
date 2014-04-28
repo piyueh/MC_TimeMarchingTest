@@ -64,7 +64,15 @@ INTEGER(KIND=4):: i, j, k, tmpI1, mt
         CALL Etable( mt, 4, R1, ele(i, j, k)%Vph )
         CALL Etable( mt, 5, R1, ele(i, j, k)%MFP )
         ele(i, j, k)%SCR = ele(i, j, k)%Vph / ele(i, j, k)%MFP
-
+        
+        IF ( ele(i, j, k)%SCR.ge.GammaT ) THEN
+            WRITE(*, *) ele(i, j, k)%T
+            WRITE(*, *) ele(i, j, k)%Vph
+            WRITE(*, *) ele(i, j, k)%MFP
+            WRITE(*, *) ele(i, j, k)%SCR, GammaT
+            CALL Errors(9)
+        ENDIF
+        
     ENDDO; ENDDO; ENDDO
 
     ele%Ntol = 0
@@ -101,6 +109,8 @@ INTEGER(KIND=4):: i
         G(i) = V(i) / MFP(i)
     ENDDO
     GammaT = MAXVAL( G )
+    WRITE(*, *) "Use Temperature ", T, " K to generate pseudo gamma."
+    WRITE(*, *) "The pseudo scattering rate is: ", GammaT
 
 END SUBROUTINE Pseudo_ScatteringRate
 
@@ -117,12 +127,7 @@ TYPE(rng_t):: Rseed
 
     CALL RAN_NUM( Rseed, R )
 
-    SELECTCASE( WAY_FlightTime )
-    CASE(1)
-        dt = TimeStep
-    CASE(2)
-        dt = - DLOG(R) / GammaT
-    END SELECT
+    dt = - DLOG(R) / GammaT
 
 END SUBROUTINE FreeFlightTime
 
