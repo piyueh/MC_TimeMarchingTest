@@ -23,7 +23,7 @@ END TYPE Phonon
 
 TYPE:: Element
     REAL(KIND=8):: BD(2, 3)
-    REAL(KIND=8):: T, E, ND, Eph, Ediff, Vph, MFP
+    REAL(KIND=8):: T, E, ND, Eph, Ediff, Vph, MFP, SCR
     INTEGER(KIND=4):: Mat
     INTEGER(KIND=4):: Ntol, Nbg, Ned
 END TYPE Element
@@ -64,6 +64,14 @@ INTEGER(KIND=4):: RNph, FNph
 TYPE(Phonon), ALLOCATABLE:: phn(:)
 INTEGER(KIND=4), ALLOCATABLE:: phId(:), EmptyID(:)
 
+
+!----------------------------------------------------------------------
+! GammaT: Constant Pseudo Scattering Rate
+! WAY_FlightTime: 1: Constant Free Flight Time
+!                 2: Random Free Flight Time
+!----------------------------------------------------------------------
+REAL(KIND=8):: GammaT
+INTEGER(KIND=4):: WAY_FlightTime
 
 !----------------------------------------------------------------------
 ! Element
@@ -121,20 +129,20 @@ INTEGER(KIND=4), ALLOCATABLE:: iNPoolL(:, :), iNPoolR(:, :)
 !----------------------------------------------------------------------
 ! Variable related computation
 !----------------------------------------------------------------------
-REAL(KIND=8):: dt, time
+REAL(KIND=8):: TimeStep, time
 INTEGER(KIND=4):: iter, iter0, iterations
 
 
 !----------------------------------------------------------------------
 ! Variable related to output
 !----------------------------------------------------------------------
-INTEGER(KIND=4):: nOutput, ct
+INTEGER(KIND=4):: nOutput
 CHARACTER(LEN=72):: CaseName, OutputFileName
 CHARACTER(LEN=72):: InputFileName, RestartFileName
 REAL(KIND=8), ALLOCATABLE:: Tavg(:, :, :), Eavg(:, :, :)
-NAMELIST /DataOutput/ iter, time, ct, L, dL, Ne, Tavg, Eavg
-NAMELIST /Initial_1/ dt, time, iter0, L, Ne, dL, dV, bundle, FNph, &
-                     RNph, PoolSize
+NAMELIST /DataOutput/ iter, time, L, dL, Ne, Tavg, Eavg
+NAMELIST /Initial_1/ TimeStep, time, iter0, L, Ne, dL, dV, bundle, &
+                     FNph, RNph, PoolSize
 NAMELIST /Initial_2/ ele, phn, PoolL, PoolR, iNPoolL, iNPoolR
 
 

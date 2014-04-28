@@ -19,24 +19,29 @@ INTEGER(KIND=4):: NCores, iCPU, i
 TYPE(rng_t):: SeedMP(NCores)
 
     iCPU = 1
-    
+
     CALL CPU_TIME( t(1) )
-    
+
     DO i = 1, FNph
         IF ( phn(i).Exist ) THEN
-            dtRemain = dt
+            dtRemain = TimeStep
             DO WHILE ( dtRemain.gt.0 )
-                CALL phn_advance( phn(i), SeedMP(iCPU), dtRemain )
+                SELECTCASE( WAY_FlightTime )
+                CASE(1)
+                    CALL phn_adv_CT( phn(i), SeedMP(iCPU), dtRemain )
+                CASE(2)
+                    CALL pgn_adv_RT( phn(i), SeedMP(iCPU), dtRemain )
+                END SELECT
             ENDDO
         ENDIF
     ENDDO
-    
+
     CALL CPU_TIME( t(2) )
     CALL Reorder_CellInfo
-    
+
     CALL CPU_TIME( t(3) )
     CALL CreateDelete( SeedMP(iCPU) )
-    
+
     CALL CPU_TIME( t(4) )
 
 END SUBROUTINE advance
@@ -46,7 +51,7 @@ END SUBROUTINE advance
 !----------------------------------------------------------------------
 ! Phonon Advance Subroutine - Single Time
 !----------------------------------------------------------------------
-SUBROUTINE phn_advance( phm, RSeed, dtRemain )
+SUBROUTINE phn_adv_CT( phm, RSeed, dtRemain )
 USE VAR, ONLY: Phonon, Element, ele, BCs
 USE RNG
 IMPLICIT NONE
@@ -107,7 +112,7 @@ LOGICAL:: TF
 
     ENDIF
 
-END SUBROUTINE phn_advance
+END SUBROUTINE phn_adv_CT
 
 
 !======================================================================
@@ -257,8 +262,8 @@ REAL(KIND=8):: tmpR1, tmpR2
 INTEGER(KIND=4):: tmpI1
 
     !------------------------------------------------------------------
-    ! V = (+ or -) (r1**0.5) * n + 
-    !     [(1 - r1)**0.5] * COS(2 * pi * r2) * t1 + 
+    ! V = (+ or -) (r1**0.5) * n +
+    !     [(1 - r1)**0.5] * COS(2 * pi * r2) * t1 +
     !     [(1 - r1)**0.5] * SIN(2 * pi * r2) * t1
     !
     ! 1. r1 & r2 are uniform random numbers in [0, 1].
@@ -266,11 +271,11 @@ INTEGER(KIND=4):: tmpI1
     ! 3. t1 & t2 are two unit vectors located on the element surface
     !    and perpendicular to each other
     ! 4. '+' or '-' depend on reflection of transmission occurs
-    ! 5. For example, in cubic elements, if hit = 1, 
+    ! 5. For example, in cubic elements, if hit = 1,
     !    then the n = ( 1, 0, 0); t1 = (0, 1, 0); t2 = (0, 0, 1)
     !    and use '-' for reflection. Therefore:
-    !      
-    !    (Vx, Vy, Vz) = -r1^0.5 * (1, 0, 0) + 
+    !
+    !    (Vx, Vy, Vz) = -r1^0.5 * (1, 0, 0) +
     !                   (1-r1)^0.5 * cos(2pi*r2) * (0, 1, 0) +
     !                   (1-r1)^0.5 * sin(2pi*r2) * (0, 0, 1)
     !--------------------------------------------------------------
@@ -286,7 +291,7 @@ INTEGER(KIND=4):: tmpI1
         tmpR1 = DSQRT( tmpR1 )
     ENDSELECT
     tmpR2 = tmpR2 * M_PI * 2D0
-    
+
     !------------------------------------------------------------------
     ! tmpR1 = (+ or -) r1^0.5
     ! tmpR2 = 2 * pi * r2
@@ -412,7 +417,7 @@ INTEGER(KIND=4):: NAddTol
                 s2 = s1 + NAdd(i, j, k) - 1
 
                 ALLOCATE( R(NAdd(i, j, k), 5) )
-                
+
                 R(:, 4) = 2D0 * R(:, 4) - 1D0
                 R(:, 5) = R(:, 5) * M_PI * 2D0
 
@@ -424,7 +429,7 @@ INTEGER(KIND=4):: NAddTol
                                              ele(i, j, k)%BD(1, 3)
 
                 phn(EmptyID(s1:s2))%V = ele(i, j, k)%Vph
-                
+
                 phn(EmptyID(s1:s2))%Vxyz(1) = &
                                         phn(EmptyID(s1:s2))%V * R(:, 4)
                 phn(EmptyID(s1:s2))%Vxyz(2) = phn(EmptyID(s1:s2))%V * &
