@@ -29,11 +29,12 @@ IMPLICIT NONE
 
     CALL init_inj_ph_prop( TBCL, VphBCL, EphBCL, bundle)
     CALL init_inj_ph_prop( TBCR, VphBCR, EphBCR, bundle)
-    CALL calc_inj_heat( TBCL, Ne(2), Ne(3), ele(1, :, :)%Mat,  &
-                        HinjectL, dA_heat, TimeStep )
-    CALL calc_inj_heat( TBCR, Ne(2), Ne(3), ele(Ne(1), :, :)%Mat,  &
-                        HinjectR, dA_heat, TimeStep )
-    
+    CALL calc_inj_heat( TBCL, dEHeatL, dA_heat, TimeStep )
+    CALL calc_inj_heat( TBCR, dEHeatR, dA_heat, TimeStep )
+
+    HinjectL = 0D0
+    HinjectR = 0D0
+
     CALL calc_approx_NHeatPh( TBCL, TBCR, dA_Heat * Ne(2) * Ne(3), &
                               TimeStep, bundle, FNHeatPh )
 
@@ -41,7 +42,20 @@ IMPLICIT NONE
     ALLOCATE( dtHeat(FNHeatPh) )
     RNHeatPh = 0
     HeatPhn%Exist = .FALSE.
-                              
+
+    WRITE(*, *) "At Left Boundary: "
+    WRITE(*, *) "   TBCL = ", TBCL
+    WRITE(*, *) "   VphBCL = ", VphBCL
+    WRITE(*, *) "   EphBCL = ", EphBCL
+    WRITE(*, *) "   dEHeatL = ", dEHeatL
+    WRITE(*, *) "At Right Boundary: "
+    WRITE(*, *) "   TBCR = ", TBCR
+    WRITE(*, *) "   VphBCR = ", VphBCR
+    WRITE(*, *) "   EphBCR = ", EphBCR
+    WRITE(*, *) "   dEHeatR = ", dEHeatR
+    WRITE(*, *) "RNHeatPh = ", RNHeatPh
+    WRITE(*, *) "FNHeatPh = ", FNHeatPh
+
 END SUBROUTINE init_heat_BC
 
 !======================================================================
@@ -72,20 +86,19 @@ END SUBROUTINE init_inj_ph_prop
 ! Calculate how much energy the boundary elements should obtain at each
 ! time step.
 !----------------------------------------------------------------------
-SUBROUTINE calc_inj_heat( T, Ny, Nz, Mat, Hinject, A, dt )
+SUBROUTINE calc_inj_heat( T, Hinj, A, dt )
 USE ROUTINES, ONLY: energy, Etable
 IMPLICIT NONE
 REAL(KIND=8), INTENT(IN):: T, A, dt
-REAL(KIND=8), INTENT(OUT):: Hinject(Ny, Nz)
-INTEGER(KIND=4), INTENT(IN):: Ny, Nz, Mat(Ny, Nz)
+REAL(KIND=8), INTENT(OUT):: Hinj(2)
 REAL(KIND=8):: U, V
-INTEGER(KIND=8):: j, k
+INTEGER(KIND=4):: i
 
-    DO k = 1, Nz; DO j = 1, Ny
-        CALL energy( Mat(j, k), T, U )
-        CALL Etable( Mat(j, k), 4, U, V)
-        Hinject(j, k) = U * V * A * dt * 0.25
-    ENDDO; ENDDO
+    DO i = 1, 2
+        CALL energy( i, T, U )
+        CALL Etable( i, 4, U, V)
+        Hinj(i) = U * V * A * dt * 0.25
+    ENDDO
 
 END SUBROUTINE calc_inj_heat
 
@@ -109,17 +122,17 @@ INTEGER(KIND=4):: i
         CALL Etable( i, 4, U1(i), V1(i) )
         Eph1(i) = U1(i) / N1(i) * w
     ENDDO
-    
+
     DO i = 1, 2
         CALL energy( i, T2, U2(i) )
         CALL Etable( i, 2, U2(i), N2(i) )
         CALL Etable( i, 4, U2(i), V2(i) )
         Eph2(i) = U2(i) / N2(i) * w
     ENDDO
-    
+
     N = MAX(MAXVAL(U1), MAXVAL(U2)) * MAX(MAXVAL(V1), MAXVAL(V2)) * &
         A * dt * 0.25 / MIN(MINVAL(Eph1), MINVAL(Eph2))
-        
+
     N = N * 1.2
 
 END SUBROUTINE calc_approx_NHeatPh
@@ -135,266 +148,258 @@ USE VAR_ALL
 USE ROUTINES
 IMPLICIT NONE
 TYPE(rng_t), INTENT(INOUT):: RSeed
-REAL(KIND=8):: H, R1
-INTEGER(KIND=4):: i, j, k, m, N, bg, ed
-REAL(KIND=8), ALLOCATABLE:: R(:, :)
+REAL(KIND=8):: R1, x, Vph, Eph
+INTEGER(KIND=4):: i, j, k, mt, eID(3)
 
-    dtHeat = 0D0
+    RNHeatPh = 0
 
+    CALL RAN_NUM( RSeed, dtHeat )
+    dtHeat = dtHeat * TimeStep
+
+    x = 0D0
+    i = 1
     DO k = 1, Ne(3); DO j = 1, Ne(2)
-        H = HinjectL(j, k)
-        SELECTCASE( PoolL(PoolSize, j, k)%Mat)
+        mt = ele(i, j, k)%Mat
+        HinjectL(j, k) = dEHeatL(mt) + HinjectL(j, k)
+        Vph = VphBCL(mt)
+        eID = (/ i, j, k /)
+        SELECTCASE( PoolL(PoolSize, j, k)%Mat )
         CASE(-1)
-            N = INT( H / EphBCL(ele(1, j, k)%Mat) + 0.5 )
-            IF (N.gt.0) THEN
-            ele(1, j, k)%Ediff = ele(1, j, k)%Ediff + H - &
-                                                       N * EphBCL(ele(1, j, k)%Mat)
+            Eph = EphBCL(mt)
 
-            bg = RNHeatPh + 1
-            ed = RNHeatPh + N
-
-            ALLOCATE( R(N, 5) )
-            CALL RAN_NUM( RSeed, R )
-
-            R(:, 4) = DSQRT( R(:, 4) )
-            R(:, 5) = R(:, 5) * M_PI * 2D0
-
-            HeatPhn(bg:ed)%xyz(1) = 0D0
-            HeatPhn(bg:ed)%xyz(2) = R(:, 2) * dL(2)
-            HeatPhn(bg:ed)%xyz(3) = R(:, 3) * dL(3)
-
-            HeatPhn(bg:ed)%V = VphBCL(ele(1, j, k)%Mat)
-            HeatPhn(bg:ed)%Vxyz(1) = HeatPhn(bg:ed)%V * R(:, 4)
-            HeatPhn(bg:ed)%Vxyz(2) = HeatPhn(bg:ed)%V * &
-                              DSQRT(1D0 - R(:, 4)**2) * DCOS( R(:, 5) )
-            HeatPhn(bg:ed)%Vxyz(3) = HeatPhn(bg:ed)%V * &
-                              DSQRT(1D0 - R(:, 4)**2) * DSIN( R(:, 5) )
-
-            HeatPhn(bg:ed)%E = EphBCL(ele(1, j, k)%Mat)
-
-            HeatPhn(bg:ed)%Org(1) = HeatPhn(bg:ed)%xyz(1)
-            HeatPhn(bg:ed)%Org(2) = HeatPhn(bg:ed)%xyz(2)
-            HeatPhn(bg:ed)%Org(3) = HeatPhn(bg:ed)%xyz(3)
-
-            HeatPhn(bg:ed)%Dis(1) = 0D0
-            HeatPhn(bg:ed)%Dis(2) = 0D0
-            HeatPhn(bg:ed)%Dis(3) = 0D0
-
-            HeatPhn(bg:ed)%Mat = ele(1, j, k)%Mat
-
-            HeatPhn(bg:ed)%eID(1) = 1
-            HeatPhn(bg:ed)%eID(2) = j
-            HeatPhn(bg:ed)%eID(3) = k
-
-            HeatPhn(bg:ed)%Exist = .TRUE.
-            
-            SELECTCASE( WAY_FlightTime )
-            CASE(1)
-                dtHeat(bg:ed) = R(:, 1) * TimeStep
-                DO i = bg, ed
-                    CALL phn_adv_CT( HeatPhn(i), RSeed, dtHeat(i) )
-                ENDDO
-            CASE(2)
-                dtHeat(bg:ed) = - DLOG( R(:, 1) ) / GammaT
-                DO i = bg, ed
-                    CALL phn_adv_RT( HeatPhn(i), RSeed, dtHeat(i) )
-                ENDDO
-            END SELECT
-            
-            DEALLOCATE( R )
-
-            RNHeatPh = ed
-            ENDIF
+            CALL Random_Injection_Control( RNHeatPh, FNHeatPh, &
+                                           HeatPhn, HinjectL(j, k), &
+                                           x, dL, Vph, Eph, mt, eID, &
+                                           1, qL(j, k), RSeed )
         CASE DEFAULT
-            WRITE(*, *) "L", j, k
-            DO WHILE( H.gt.0D0 )
-                CALL RAN_NUM( Rseed, R1 )
-                m = MAX(INT( R1 * PoolSize + 0.5 ), 1)
-                RNHeatPh = RNHeatPh + 1
-                
-                HeatPhn(RNHeatPh)%xyz(1) = 0D0
-                HeatPhn(RNHeatPh)%xyz(2) = PoolL(m, j, k)%y
-                HeatPhn(RNHeatPh)%xyz(3) = PoolL(m, j, k)%z
-                
-                HeatPhn(RNHeatPh)%V = VphBCL(ele(1, j, k)%Mat)
-                HeatPhn(RNHeatPh)%Vxyz(1) = HeatPhn(RNHeatPh)%V * &
-                                            PoolL(m, j, k)%direction(1)
-                HeatPhn(RNHeatPh)%Vxyz(2) = HeatPhn(RNHeatPh)%V * &
-                                            PoolL(m, j, k)%direction(2)
-                HeatPhn(RNHeatPh)%Vxyz(3) = HeatPhn(RNHeatPh)%V * &
-                                            PoolL(m, j, k)%direction(3)
-                
-                HeatPhn(RNHeatPh)%E = EphBCL(PoolL(m, j, k)%Mat)
-                
-                HeatPhn(RNHeatPh)%Org(1) = HeatPhn(RNHeatPh)%xyz(1)
-                HeatPhn(RNHeatPh)%Org(2) = HeatPhn(RNHeatPh)%xyz(2)
-                HeatPhn(RNHeatPh)%Org(3) = HeatPhn(RNHeatPh)%xyz(3)
-                
-                HeatPhn(RNHeatPh)%Dis(1) = 0D0
-                HeatPhn(RNHeatPh)%Dis(2) = 0D0
-                HeatPhn(RNHeatPh)%Dis(3) = 0D0
-                
-                HeatPhn(RNHeatPh)%Mat = PoolL(m, j, k)%Mat
-                
-                HeatPhn(RNHeatPh)%eID(1) = 1
-                HeatPhn(RNHeatPh)%eID(2) = j
-                HeatPhn(RNHeatPh)%eID(3) = k
-                
-                HeatPhn(RNHeatPh)%Exist = .TRUE.
-                
-                SELECTCASE(WAY_FlightTime)
-                CASE(1)
-                    dtHeat(RNHeatPh) = PoolL(m, j, k)%dtRemain
-                    CALL phn_adv_CT( HeatPhn(RNHeatPh), RSeed, dtHeat(RNHeatPh) )
-                CASE(2)
-                    CALL RAN_NUM( Rseed, R1 )
-                    dtHeat(RNHeatPh) = - DLOG( R1 ) / GammaT
-                    CALL phn_adv_RT( HeatPhn(RNHeatPh), RSeed, dtHeat(RNHeatPh) )
-                END SELECT
-                
-                H = H - HeatPhn(RNHeatPh)%E
-                
-            ENDDO
-            
-            ele(1, j, k)%Ediff = ele(1, j, k)%Ediff + H
-            
+            R1 = EphBCL(mt) * 0.5
+
+            CALL Perodic_Injection_Control( RNHeatph, FNHeatPh, &
+                                            HeatPhn, PoolSize, &
+                                            PoolL(:, j, k), &
+                                            dtHeat, HinjectL(j, k), &
+                                            x, Vph, EphBCL, R1, eID, &
+                                            qL(j, k), RSeed )
         END SELECT
     ENDDO; ENDDO
-    
-    
+
+    x = L(1)
+    i = Ne(1)
     DO k = 1, Ne(3); DO j = 1, Ne(2)
-        H = HinjectR(j, k)
+        mt = ele(i, j, k)%Mat
+        HinjectR(j, k) = dEHeatR(mt) + HinjectR(j, k)
+        Vph = VphBCR(mt)
+        eID = (/ i, j, k /)
         SELECTCASE( PoolR(PoolSize, j, k)%Mat )
         CASE(-1)
-            N = INT( H / EphBCR(ele(Ne(1), j, k)%Mat) + 0.5 )
-            IF (N.gt.0) THEN
-            ele(1, j, k)%Ediff = ele(1, j, k)%Ediff + H - &
-                                                       N * EphBCR(ele(Ne(1), j, k)%Mat)
+            Eph = EphBCR(mt)
 
-            bg = RNHeatPh + 1
-            ed = RNHeatPh + N
-
-            ALLOCATE( R(N, 5) )
-            CALL RAN_NUM( RSeed, R )
-
-            R(:, 4) = - DSQRT( R(:, 4) )
-            R(:, 5) = R(:, 5) * M_PI * 2D0
-
-            HeatPhn(bg:ed)%xyz(1) = L(1)
-            HeatPhn(bg:ed)%xyz(2) = R(:, 2) * dL(2)
-            HeatPhn(bg:ed)%xyz(3) = R(:, 3) * dL(3)
-
-            HeatPhn(bg:ed)%V = VphBCR(ele(Ne(1), j, k)%Mat)
-            HeatPhn(bg:ed)%Vxyz(1) = HeatPhn(bg:ed)%V * R(:, 4)
-            HeatPhn(bg:ed)%Vxyz(2) = HeatPhn(bg:ed)%V * &
-                              DSQRT(1D0 - R(:, 4)**2) * DCOS( R(:, 5) )
-            HeatPhn(bg:ed)%Vxyz(3) = HeatPhn(bg:ed)%V * &
-                              DSQRT(1D0 - R(:, 4)**2) * DSIN( R(:, 5) )
-
-            HeatPhn(bg:ed)%E = EphBCR(ele(Ne(1), j, k)%Mat)
-
-            HeatPhn(bg:ed)%Org(1) = HeatPhn(bg:ed)%xyz(1)
-            HeatPhn(bg:ed)%Org(2) = HeatPhn(bg:ed)%xyz(2)
-            HeatPhn(bg:ed)%Org(3) = HeatPhn(bg:ed)%xyz(3)
-
-            HeatPhn(bg:ed)%Dis(1) = 0D0
-            HeatPhn(bg:ed)%Dis(2) = 0D0
-            HeatPhn(bg:ed)%Dis(3) = 0D0
-
-            HeatPhn(bg:ed)%Mat = ele(Ne(1), j, k)%Mat
-
-            HeatPhn(bg:ed)%eID(1) = Ne(1)
-            HeatPhn(bg:ed)%eID(2) = j
-            HeatPhn(bg:ed)%eID(3) = k
-
-            HeatPhn(bg:ed)%Exist = .TRUE.
-
-            SELECTCASE( WAY_FlightTime )
-            CASE(1)
-                dtHeat(bg:ed) = R(:, 1) * TimeStep
-                DO i = bg, ed
-                    CALL phn_adv_CT( HeatPhn(i), RSeed, dtHeat(i) )
-                ENDDO
-            CASE(2)
-                dtHeat(bg:ed) = - DLOG( R(:, 1) ) / GammaT
-                DO i = bg, ed
-                    CALL phn_adv_RT( HeatPhn(i), RSeed, dtHeat(i) )
-                ENDDO
-            END SELECT
-            
-            DEALLOCATE( R )
-
-            RNHeatPh = ed
-            ENDIF
+            CALL Random_Injection_Control( RNHeatPh, FNHeatPh, &
+                                           HeatPhn, HinjectR(j, k), &
+                                           x, dL, Vph, Eph, mt, eID, &
+                                           -1, qR(j, k), RSeed )
         CASE DEFAULT
-            WRITE(*, *) "R", j, k
-            DO WHILE( H.gt.0D0 )
-                CALL RAN_NUM( Rseed, R1 )
-                m = MAX(INT( R1 * PoolSize + 0.5 ), 1)
-                RNHeatPh = RNHeatPh + 1
-                
-                HeatPhn(RNHeatPh)%xyz(1) = L(1)
-                HeatPhn(RNHeatPh)%xyz(2) = PoolR(m, j, k)%y
-                HeatPhn(RNHeatPh)%xyz(3) = PoolR(m, j, k)%z
-                
-                HeatPhn(RNHeatPh)%V = VphBCR(ele(Ne(1), j, k)%Mat)
-                HeatPhn(RNHeatPh)%Vxyz(1) = HeatPhn(RNHeatPh)%V * &
-                                            PoolR(m, j, k)%direction(1)
-                HeatPhn(RNHeatPh)%Vxyz(2) = HeatPhn(RNHeatPh)%V * &
-                                            PoolR(m, j, k)%direction(2)
-                HeatPhn(RNHeatPh)%Vxyz(3) = HeatPhn(RNHeatPh)%V * &
-                                            PoolR(m, j, k)%direction(3)
-                
-                HeatPhn(RNHeatPh)%E = EphBCR(PoolL(m, j, k)%Mat)
-                
-                HeatPhn(RNHeatPh)%Org(1) = HeatPhn(RNHeatPh)%xyz(1)
-                HeatPhn(RNHeatPh)%Org(2) = HeatPhn(RNHeatPh)%xyz(2)
-                HeatPhn(RNHeatPh)%Org(3) = HeatPhn(RNHeatPh)%xyz(3)
-                
-                HeatPhn(RNHeatPh)%Dis(1) = 0D0
-                HeatPhn(RNHeatPh)%Dis(2) = 0D0
-                HeatPhn(RNHeatPh)%Dis(3) = 0D0
-                
-                HeatPhn(RNHeatPh)%Mat = PoolR(m, j, k)%Mat
-                
-                HeatPhn(RNHeatPh)%eID(1) = Ne(1)
-                HeatPhn(RNHeatPh)%eID(2) = j
-                HeatPhn(RNHeatPh)%eID(3) = k
-                
-                HeatPhn(RNHeatPh)%Exist = .TRUE.
-                
-                SELECTCASE(WAY_FlightTime)
-                CASE(1)
-                    dtHeat(RNHeatPh) = PoolR(m, j, k)%dtRemain
-                    CALL phn_adv_CT( HeatPhn(RNHeatPh), RSeed, dtHeat(RNHeatPh) )
-                CASE(2)
-                    CALL RAN_NUM( Rseed, R1 )
-                    dtHeat(RNHeatPh) = - DLOG( R1 ) / GammaT
-                    CALL phn_adv_RT( HeatPhn(RNHeatPh), RSeed, dtHeat(RNHeatPh) )
-                END SELECT
-            
-                H = H - HeatPhn(RNHeatPh)%E
-            
-            ENDDO
-            
-            ele(Ne(1), j, k)%Ediff = ele(Ne(1), j, k)%Ediff + H
-            
+            R1 = EphBCR(mt) * 0.5
+
+            CALL Perodic_Injection_Control( RNHeatph, FNHeatPh, &
+                                            HeatPhn, PoolSize, &
+                                            PoolR(:, j, k), &
+                                            dtHeat, HinjectR(j, k), &
+                                            x, Vph, EphBCR, R1, eID, &
+                                            qR(j, k), RSeed )
         END SELECT
     ENDDO; ENDDO
-    
+
+    DO i = 1, FNHeatph
+        IF ( HeatPhn(i).Exist ) THEN
+            DO WHILE ( dtHeat(i).gt.0 )
+                SELECTCASE( WAY_FlightTime )
+                CASE(1)
+                    CALL phn_adv_CT( HeatPhn(i), RSeed, dtHeat(i) )
+                CASE(2)
+                    CALL phn_adv_RT( HeatPhn(i), RSeed, dtHeat(i) )
+                END SELECT
+            ENDDO
+        ENDIF
+    ENDDO
+
 END SUBROUTINE Heat_Control
 
 
 !======================================================================
 !----------------------------------------------------------------------
-! Random Injection
+! Perodic Injection Controller
 !----------------------------------------------------------------------
-! SUBROUTINE Random_Injection( Pool )
-! IMPLICIT NONE
+SUBROUTINE Perodic_Injection_Control( NHph, S, HPhn, PLSize, PL, dt, &
+                                      Hinj, x, V, EphBC, tmp, eID, &
+                                      q, RSeed )
+USE VAR_TYPES
+IMPLICIT NONE
+INTEGER(KIND=4), INTENT(IN):: S, PLSize, eID(3)
+INTEGER(KIND=4), INTENT(INOUT):: NHph
+REAL(KIND=8), INTENT(IN):: x, V, EphBC(2), tmp
+REAL(KIND=8), INTENT(INOUT):: dt(S), Hinj, q
+TYPE(Phonon), INTENT(INOUT):: HPhn(S)
+TYPE(phnPool), INTENT(IN):: PL(PLSize)
+TYPE(rng_t), INTENT(INOUT):: RSeed
+REAL(KIND=8):: R1, E
+INTEGER(KIND=4):: m
 
 
+    DO WHILE( Hinj.gt.tmp )
+        CALL RAN_NUM( RSeed, R1 )
+        m = MAX( INT( R1 * PLSize + 0.5 ), 1 )
+        NHph = NHph + 1
+        E = EphBC(PL(m)%Mat)
+        CALL S_Perodic_Injection( HPhn(NHph), dt(NHph), PL(m), &
+                                  x, V, E, eID )
+        Hinj = Hinj - E
+        q = q + E
+    ENDDO
 
-!END SUBROUTINE Random_Injection
+END SUBROUTINE Perodic_Injection_Control
+
+
+!======================================================================
+!----------------------------------------------------------------------
+! Random Injection Controller
+!----------------------------------------------------------------------
+SUBROUTINE Random_Injection_Control( NHPh, S, HPhn, Hinj, x, dL, &
+                                     V, E, mt, eID, dir, q, RSeed )
+USE VAR_TYPES
+IMPLICIT NONE
+REAL(KIND=8), INTENT(IN):: E, x, dL(3), V
+REAL(KIND=8), INTENT(INOUT):: Hinj, q
+INTEGER(KIND=4), INTENT(IN):: S, mt, eID(3), dir
+INTEGER(KIND=4), INTENT(INOUT):: NHPH
+TYPE(Phonon), INTENT(INOUT):: HPhn(S)
+TYPE(rng_t), INTENT(INOUT):: RSeed
+INTEGER(KIND=4):: N, bg, ed, i
+!-------------------------------------------------
+! dir = 1, Phonons are injected from left boundary
+!      -1, ..........................right........
+!-------------------------------------------------
+
+    N = INT( Hinj / E + 0.5 )
+
+    IF (N.gt.0) THEN
+        Hinj = Hinj - N * E
+        q = q + N * E
+
+        bg = NHPh + 1
+        ed = NHPh + N
+
+        DO i = bg, ed
+            CALL S_Random_Injection( HPhn(i), x, dL, V, &
+                                             E, mt, eID, dir, RSeed )
+        ENDDO
+
+        NHPh = ed
+    ENDIF
+
+END SUBROUTINE Random_Injection_Control
+
+
+!======================================================================
+!----------------------------------------------------------------------
+! Random Injection of a single phonon
+!----------------------------------------------------------------------
+SUBROUTINE S_Random_Injection( HPhm, x, dL, V, Eph, mt, &
+                                                      eID, dir, RSeed )
+USE VAR_TYPES
+USE VAR_Others, ONLY: M_PI
+IMPLICIT NONE
+TYPE(rng_t), INTENT(INOUT):: RSeed
+TYPE(Phonon), INTENT(OUT):: HPhm
+REAL(KIND=8), INTENT(IN):: x, dL(3), V, Eph
+INTEGER(KIND=4), INTENT(IN):: dir, mt, eID(3)
+REAL(KIND=8):: R(4)
+!-------------------------------------------------
+! dir = 1, Phonons are injected from left boundary
+!      -1, ..........................right........
+!-------------------------------------------------
+
+    CALL RAN_NUM( RSeed, R )
+
+    R(3) = DBLE( dir ) * DSQRT( R(3) )
+    R(4) = R(4) * M_PI * 2D0
+
+    HPhm%xyz(1) = x
+    HPhm%xyz(2) = (DBLE( eID(2) - 1 ) + R(1)) * dL(2)
+    HPhm%xyz(3) = (DBLE( eID(3) - 1 ) + R(2)) * dL(3)
+
+    HPhm%V = V
+    HPhm%Vxyz(1) = HPhm%V * R(3)
+    HPhm%Vxyz(2) = HPhm%V * DSQRT(1D0 - R(3)**2) * DCOS( R(4) )
+    HPhm%Vxyz(3) = HPhm%V * DSQRT(1D0 - R(3)**2) * DSIN( R(4) )
+
+    HPhm%E = Eph
+
+    HPhm%Org(1) = HPhm%xyz(1)
+    HPhm%Org(2) = HPhm%xyz(2)
+    HPhm%Org(3) = HPhm%xyz(3)
+
+    HPhm%Dis(1) = 0D0
+    HPhm%Dis(2) = 0D0
+    HPhm%Dis(3) = 0D0
+
+    HPhm%Mat = mt
+
+    HPhm%eID(1) = eID(1)
+    HPhm%eID(2) = eID(2)
+    HPhm%eID(3) = eID(3)
+
+    HPhm%Exist = .TRUE.
+
+END SUBROUTINE S_Random_Injection
+
+
+!======================================================================
+!----------------------------------------------------------------------
+! Random Injection of a single phonon
+!----------------------------------------------------------------------
+SUBROUTINE S_Perodic_Injection( HPhm, dt, HPl, &
+                                x, Vph, Eph, eID )
+USE VAR_TYPES
+IMPLICIT NONE
+REAL(KIND=8), INTENT(IN):: x, Vph, Eph
+REAL(KIND=8), INTENT(INOUT):: dt
+INTEGER(KIND=4), INTENT(IN):: eID(3)
+TYPE(Phonon), INTENT(OUT):: HPhm
+TYPE(phnPool), INTENT(IN):: HPl
+
+    HPhm%xyz(1) = x
+    HPhm%xyz(2) = HPl%y
+    HPhm%xyz(3) = HPl%z
+
+    HPhm%V = Vph
+    HPhm%Vxyz(1) = HPhm%V * HPl%direction(1)
+    HPhm%Vxyz(2) = HPhm%V * HPl%direction(2)
+    HPhm%Vxyz(3) = HPhm%V * HPl%direction(3)
+
+    HPhm%E = Eph
+
+    HPhm%Org(1) = HPhm%xyz(1)
+    HPhm%Org(2) = HPhm%xyz(2)
+    HPhm%Org(3) = HPhm%xyz(3)
+
+    HPhm%Dis(1) = 0D0
+    HPhm%Dis(2) = 0D0
+    HPhm%Dis(3) = 0D0
+
+    HPhm%Mat = HPl%Mat
+
+    HPhm%eID(1) = eID(1)
+    HPhm%eID(2) = eID(2)
+    HPhm%eID(3) = eID(3)
+
+    HPhm%Exist = .TRUE.
+
+    dt = Hpl%dtRemain
+
+END SUBROUTINE S_Perodic_Injection
+
+
 
 !======================================================================
 !----------------------------------------------------------------------

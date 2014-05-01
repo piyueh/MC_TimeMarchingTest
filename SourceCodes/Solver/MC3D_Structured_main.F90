@@ -84,6 +84,7 @@ SUBROUTINE advance( NCores, SeedMP, t )
 USE RNG
 USE HEAT
 USE ADV
+USE VAR_BC, ONLY: BCs
 USE VAR_ph, ONLY: FNph, phn
 USE VAR_Others, ONLY: TimeStep, WAY_FlightTime
 USE ROUTINES, ONLY: Reorder_CellInfo
@@ -110,8 +111,8 @@ TYPE(rng_t):: SeedMP(NCores)
     ENDDO
 
     CALL CPU_TIME( t(2) )
-    CALL Heat_Control( SeedMP(iCPU) )
-    
+    IF ( BCs(1).eq.3 ) CALL Heat_Control( SeedMP(iCPU) )
+
     CALL CPU_TIME( t(3) )
     CALL Reorder_CellInfo
 

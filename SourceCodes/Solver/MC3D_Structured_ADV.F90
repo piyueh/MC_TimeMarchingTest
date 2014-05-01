@@ -561,7 +561,7 @@ INTEGER(KIND=4):: I1, I2, I3
         PoolL(I1, I2, I3)%direction(3) = phm%Vxyz(3) / phm%V
         PoolL(I1, I2, I3)%dtRemain = dtRemain
         PoolL(I1, I2, I3)%Mat = phm%Mat
-        qL(I2, I3) = qL(I2, I3) + phm%E
+        qR(I2, I3) = qR(I2, I3) - phm%E
     CASE(-1)
         IF ( iNPoolR(I2, I3).eq.PoolSize ) iNPoolR(I2, I3) = 0
         iNPoolR(I2, I3) = iNPoolR(I2, I3) + 1
@@ -573,7 +573,7 @@ INTEGER(KIND=4):: I1, I2, I3
         PoolR(I1, I2, I3)%direction(3) = phm%Vxyz(3) / phm%V
         PoolR(I1, I2, I3)%dtRemain = dtRemain
         PoolR(I1, I2, I3)%Mat = phm%Mat
-        qR(I2, I3) = qR(I2, I3) + phm%E
+        qL(I2, I3) = qL(I2, I3) - phm%E
     END SELECT
 
     phm%Exist = .FALSE.

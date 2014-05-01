@@ -107,7 +107,7 @@ IMPLICIt NONE
     WRITE(OutputFileName, "(I8.8, '_Transient.txt')") iter
     OPEN( UNIT = 150, FILE = OutputFileName )
     WRITE(150, *) time
-    WRITE(150, *) ele(:, 1, 1)%T
+    WRITE(150, *) ele%T
     CLOSE( 150 )
 
 END SUBROUTINE Output_Trans
@@ -136,13 +136,23 @@ INTEGER(KIND=4):: i, j, k, mt
             CALL Etable( mt, 1, R1, Tavg(i, j, k) )
         ENDDO; ENDDO; ENDDO
 
+        qL = qL / DBLE( ct )
+        qC = qC / DBLE( ct )
+        qR = qR / DBLE( ct )
+        qfluxL = SUM( qL ) / (L(2) * L(3))
+        qfluxC = SUM( qC ) / (L(2) * L(3))
+        qfluxR = SUM( qR ) / (L(2) * L(3))
+
         WRITE(OutputFileName, "(I8.8, '.txt')") iter
         OPEN( UNIT = 150, FILE = OutputFileName )
         WRITE(150, *) ct
         WRITE(150, NML = DataOutput)
         CLOSE( 150 )
 
-        Eavg = 0
+        Eavg = 0D0
+        qL = 0D0
+        qC = 0D0
+        qR = 0D0
         ct = 0
 
         ! CALL Output_Trans
@@ -159,7 +169,7 @@ SUBROUTINE ShowOnScreen( CPUTime )
 IMPLICIT NONE
 REAL(KIND=8):: CPUTime(5)
 
-    WRITE(*, "(I7, 2X, I8, 2X, 4(F6.3, 2X))") iter, RNph, &
+    WRITE(*, "(I7, 2X, I8, 2X, 4(ES7.1E1, 2X))") iter, RNph, &
                                              CPUTime(2) - CPUTime(1), &
                                              CPUTime(3) - CPUTime(2), &
                                              CPUTime(4) - CPUTime(3), &
