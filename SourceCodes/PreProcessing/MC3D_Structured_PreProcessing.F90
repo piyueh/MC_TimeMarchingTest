@@ -24,7 +24,7 @@ INTEGER(KIND=4):: Npercell
 
     WRITE(*, '("Enter CASE Name: ")', ADVANCE = 'NO')
     !READ(*, *) CaseName
-    CaseName = "Adiabatic_Transien_Ge"
+    CaseName = "test"
     InputFileName = casename(1:LEN_TRIM(casename))//'_initial.txt'
 
     WRITE(*, '("Enter Domain, Lx, Ly, Lz: ")', ADVANCE = 'NO')
@@ -122,8 +122,9 @@ INTEGER(KIND=4):: i, j, k, tmpI1, Loc(3), NperCell
     SUBROUTINE Initial_Temperature
     IMPLICIT NONE
 
-        ele(1:Ne(1)/2, :, :)%T = 2D2
-        ele(Ne(1)/2:Ne(1), :, :)%T = 4D2
+        !ele(1:Ne(1)/2, :, :)%T = 2D2
+        !ele(Ne(1)/2:Ne(1), :, :)%T = 4D2
+        ele%T = 330D0
 
     END SUBROUTINE Initial_Temperature
 
@@ -276,9 +277,6 @@ IMPLICIT NONE
 
     iNPoolL = 0
     iNpoolR = 0
-
-    TFPoolL = .FALSE.
-    TFPoolR = .FALSE.
 
 END SUBROUTINE Initialize_Pools
 

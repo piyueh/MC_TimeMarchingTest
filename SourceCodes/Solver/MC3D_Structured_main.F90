@@ -12,20 +12,20 @@ USE ADV
 USE IO
 USE ROUTINES
 IMPLICIT NONE
-REAL(KIND=8):: R1, t(4)
+REAL(KIND=8):: R1, t(5)
 INTEGER(KIND=4):: i, NCores
 TYPE(rng_t), ALLOCATABLE:: SeedMP(:)
 
 
     WRITE(*, '("Enter CASE Name: ")', ADVANCE = 'NO')
     !READ(*, *) CaseName
-    CaseName = "Adiabatic_Transien_Ge"
+    CaseName = "test"
     InputFileName = casename(1:LEN_TRIM(casename))//'_initial.txt'
 
 
     WRITE(*, '("Enter BCs (BCx, BCy, BCz): ")', ADVANCE = 'NO')
     !READ(*, *) BCs
-    BCs = (/ 1, 2, 2 /)
+    BCs = (/ 3, 2, 2 /)
 
 
     WRITE(*, '("Enter the Numer of CPU Cores: ")', ADVANCE = 'NO')
@@ -49,7 +49,7 @@ TYPE(rng_t), ALLOCATABLE:: SeedMP(:)
 
     WRITE(*, '("Enter the Method for Time Marching: ")', ADVANCE = 'NO')
     !READ(*, *) WAY_FlightTime
-    WAY_FlightTime = 2
+    WAY_FlightTime = 1
 
     CALL Initialize_Ge( Ge_table, Ge_start, dU_Ge, N_Ge1, N_Ge2 )
     CALL Initialize_Si( Si_table, Si_start, dU_Si, N_Si1, N_Si2 )
@@ -74,3 +74,50 @@ TYPE(rng_t), ALLOCATABLE:: SeedMP(:)
     DEALLOCATE( SeedMP )
 
 END PROGRAM main
+
+
+!======================================================================
+!----------------------------------------------------------------------
+! Phonon Advance Subroutine - Controller
+!----------------------------------------------------------------------
+SUBROUTINE advance( NCores, SeedMP, t )
+USE RNG
+USE HEAT
+USE ADV
+USE VAR_ph, ONLY: FNph, phn
+USE VAR_Others, ONLY: TimeStep, WAY_FlightTime
+USE ROUTINES, ONLY: Reorder_CellInfo
+REAL(KIND=8):: dtRemain, t(5)
+INTEGER(KIND=4):: NCores, iCPU, i
+TYPE(rng_t):: SeedMP(NCores)
+
+    iCPU = 1
+
+    CALL CPU_TIME( t(1) )
+
+    DO i = 1, FNph
+        IF ( phn(i).Exist ) THEN
+            dtRemain = TimeStep
+            DO WHILE ( dtRemain.gt.0 )
+                SELECTCASE( WAY_FlightTime )
+                CASE(1)
+                    CALL phn_adv_CT( phn(i), SeedMP(iCPU), dtRemain )
+                CASE(2)
+                    CALL phn_adv_RT( phn(i), SeedMP(iCPU), dtRemain )
+                END SELECT
+            ENDDO
+        ENDIF
+    ENDDO
+
+    CALL CPU_TIME( t(2) )
+    CALL Heat_Control( SeedMP(iCPU) )
+    
+    CALL CPU_TIME( t(3) )
+    CALL Reorder_CellInfo
+
+    CALL CPU_TIME( t(4) )
+    CALL CreateDelete( SeedMP(iCPU) )
+
+    CALL CPU_TIME( t(5) )
+
+END SUBROUTINE advance

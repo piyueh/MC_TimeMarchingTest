@@ -31,8 +31,6 @@ IMPLICIT NONE
     ALLOCATE( PoolR(PoolSize, Ne(2), Ne(3)) )
     ALLOCATE( iNPoolL(Ne(2), Ne(3)) )
     ALLOCATE( iNPoolR(Ne(2), Ne(3)) )
-    ALLOCATE( NinjectL(Ne(2), Ne(3)) )
-    ALLOCATE( NinjectR(Ne(2), Ne(3)) )
     READ(UNIT = 120, NML = Initial_2)
     CLOSE( 120 )
 
@@ -50,8 +48,8 @@ IMPLICIT NONE
     phId = -1
     EmptyID = -1
 
-    ALLOCATE( EinjectL(Ne(1), Ne(2)) )
-    ALLOCATE( EinjectR(Ne(1), Ne(2)) )
+    ALLOCATE( HinjectL(Ne(1), Ne(2)) )
+    ALLOCATE( HinjectR(Ne(1), Ne(2)) )
     ALLOCATE( qL(Ne(1), Ne(2)) )
     ALLOCATE( qC(Ne(1), Ne(2)) )
     ALLOCATE( qR(Ne(1), Ne(2)) )
@@ -65,10 +63,6 @@ IMPLICIT NONE
         qfluxL = 0
         qfluxC = 0
         qfluxR = 0
-        WRITE(*, *) "This BC is not supported yet."
-        WRITE(*, *) "Program will be shut down in 5 seconds."
-        CALL SLEEP(5)
-        STOP
     CASE DEFAULT
         HinjectL = 0
         HinjectR = 0
@@ -95,6 +89,7 @@ IMPLICIT NONE
     WRITE(*, *) "Bundle: ", bundle
     WRITE(*, *) "TimeStep: ", TimeStep
 
+    GammaT = 1D2
     IF ( WAY_FlightTime.eq.2 ) &
         CALL Pseudo_ScatteringRate( TBCL, TBCR, MAXVAL( ele%T ), &
                                                                GammaT )
@@ -150,7 +145,7 @@ INTEGER(KIND=4):: i, j, k, mt
         Eavg = 0
         ct = 0
 
-        CALL Output_Trans
+        ! CALL Output_Trans
     ENDIF
 
 END SUBROUTINE Output
@@ -162,13 +157,13 @@ END SUBROUTINE Output
 !----------------------------------------------------------------------
 SUBROUTINE ShowOnScreen( CPUTime )
 IMPLICIT NONE
-REAL(KIND=8):: CPUTime(4)
+REAL(KIND=8):: CPUTime(5)
 
-    WRITE(*, "(I7, 2X, I8, 2X, 3(F6.3, 2X))") iter, RNph, &
+    WRITE(*, "(I7, 2X, I8, 2X, 4(F6.3, 2X))") iter, RNph, &
                                              CPUTime(2) - CPUTime(1), &
                                              CPUTime(3) - CPUTime(2), &
-                                             CPUTime(4) - CPUTime(3)
-
+                                             CPUTime(4) - CPUTime(3), &
+                                             CPUTime(5) - CPUTime(4)
 END SUBROUTINE ShowOnScreen
 
 

@@ -9,45 +9,6 @@ MODULE ADV
 USE RNG
 IMPLICIT NONE
 CONTAINS
-!======================================================================
-!----------------------------------------------------------------------
-! Phonon Advance Subroutine - Controller
-!----------------------------------------------------------------------
-SUBROUTINE advance( NCores, SeedMP, t )
-USE VAR_ph, ONLY: FNph, phn
-USE VAR_Others, ONLY: TimeStep, WAY_FlightTime
-USE ROUTINES, ONLY: Reorder_CellInfo
-REAL(KIND=8):: dtRemain, t(4)
-INTEGER(KIND=4):: NCores, iCPU, i
-TYPE(rng_t):: SeedMP(NCores)
-
-    iCPU = 1
-
-    CALL CPU_TIME( t(1) )
-
-    DO i = 1, FNph
-        IF ( phn(i).Exist ) THEN
-            dtRemain = TimeStep
-            DO WHILE ( dtRemain.gt.0 )
-                SELECTCASE( WAY_FlightTime )
-                CASE(1)
-                    CALL phn_adv_CT( phn(i), SeedMP(iCPU), dtRemain )
-                CASE(2)
-                    CALL phn_adv_RT( phn(i), SeedMP(iCPU), dtRemain )
-                END SELECT
-            ENDDO
-        ENDIF
-    ENDDO
-
-    CALL CPU_TIME( t(2) )
-    CALL Reorder_CellInfo
-
-    CALL CPU_TIME( t(3) )
-    CALL CreateDelete( SeedMP(iCPU) )
-
-    CALL CPU_TIME( t(4) )
-
-END SUBROUTINE advance
 
 
 !======================================================================
@@ -595,9 +556,9 @@ INTEGER(KIND=4):: I1, I2, I3
         I1 = iNPoolL(I2, I3)
         PoolL(I1, I2, I3)%y = phm%xyz(2)
         PoolL(I1, I2, I3)%z = phm%xyz(3)
-        PoolL(I1, I2, I3)%direction(1) = phm%Vxyz(1)
-        PoolL(I1, I2, I3)%direction(2) = phm%Vxyz(2)
-        PoolL(I1, I2, I3)%direction(3) = phm%Vxyz(3)
+        PoolL(I1, I2, I3)%direction(1) = phm%Vxyz(1) / phm%V
+        PoolL(I1, I2, I3)%direction(2) = phm%Vxyz(2) / phm%V
+        PoolL(I1, I2, I3)%direction(3) = phm%Vxyz(3) / phm%V
         PoolL(I1, I2, I3)%dtRemain = dtRemain
         PoolL(I1, I2, I3)%Mat = phm%Mat
         qL(I2, I3) = qL(I2, I3) + phm%E
@@ -607,9 +568,9 @@ INTEGER(KIND=4):: I1, I2, I3
         I1 = iNPoolR(I2, I3)
         PoolR(I1, I2, I3)%y = phm%xyz(2)
         PoolR(I1, I2, I3)%z = phm%xyz(3)
-        PoolR(I1, I2, I3)%direction(1) = phm%Vxyz(1)
-        PoolR(I1, I2, I3)%direction(2) = phm%Vxyz(2)
-        PoolR(I1, I2, I3)%direction(3) = phm%Vxyz(3)
+        PoolR(I1, I2, I3)%direction(1) = phm%Vxyz(1) / phm%V
+        PoolR(I1, I2, I3)%direction(2) = phm%Vxyz(2) / phm%V
+        PoolR(I1, I2, I3)%direction(3) = phm%Vxyz(3) / phm%V
         PoolR(I1, I2, I3)%dtRemain = dtRemain
         PoolR(I1, I2, I3)%Mat = phm%Mat
         qR(I2, I3) = qR(I2, I3) + phm%E

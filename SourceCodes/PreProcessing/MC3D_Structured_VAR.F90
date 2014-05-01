@@ -109,9 +109,8 @@ IMPLICIT NONE
     !       dV: Volume of cubic elementa
     !       Ne: Numbers of cubic elements in 3 directions (x, y, z)
     !------------------------------------------------------------------
-    REAL(KIND=8), SAVE:: dL(3), dV
+    REAL(KIND=8), SAVE:: dL(3), dV, dA_heat
     INTEGER(KIND=4), SAVE:: Ne(3)
-    INTEGER(KIND=4), SAVE:: NEmpty
     INTEGER(KIND=8), SAVE:: iMid
     TYPE(Element), ALLOCATABLE, SAVE:: ele(:, :, :)
     INTEGER(KIND=4), ALLOCATABLE, SAVE:: NAdd(:, :, :)
@@ -139,6 +138,7 @@ IMPLICIT NONE
     !------------------------------------------------------------------
     REAL(KIND=8), SAVE:: bundle
     INTEGER(KIND=4), SAVE:: RNph, FNph
+    INTEGER(KIND=4), SAVE:: NEmpty
     TYPE(Phonon), ALLOCATABLE, SAVE:: phn(:)
     INTEGER(KIND=4), ALLOCATABLE, SAVE:: phId(:), EmptyID(:)
 
@@ -177,8 +177,12 @@ IMPLICIT NONE
     REAL(KIND=8), SAVE:: QBCL, QBCR
     REAL(KIND=8), SAVE:: qfluxL, qfluxC, qfluxR
     REAL(KIND=8), SAVE:: VphBCL(2), VphBCR(2), EphBCL(2), EphBCR(2)
-    REAL(KIND=8), ALLOCATABLE, SAVE:: EinjectL(:, :), EinjectR(:, :)
+    INTEGER(KIND=4), SAVE:: FNHeatPh, RNHeatPh
+    REAL(KIND=8), ALLOCATABLE, SAVE:: dtHeat(:)
+    REAL(KIND=8), ALLOCATABLE, SAVE:: HinjectL(:, :), HinjectR(:, :)
     REAL(KIND=8), ALLOCATABLE, SAVE:: qL(:, :), qC(:, :), qR(:, :)
+    TYPE(Phonon), ALLOCATABLE, SAVE:: HeatPhn(:)
+
 
     !------------------------------------------------------------------
     ! Variables with regard to random heat injection method
@@ -190,6 +194,8 @@ IMPLICIT NONE
     INTEGER(KIND=4), SAVE:: PoolSize
     TYPE(phnPool), ALLOCATABLE, SAVE:: PoolL(:, :, :), PoolR(:, :, :)
     INTEGER(KIND=4), ALLOCATABLE, SAVE:: iNPoolL(:, :), iNPoolR(:, :)
+
+
 
 END MODULE VAR_BC
 
@@ -210,8 +216,8 @@ IMPLICIT NONE
     CHARACTER(LEN=72), SAVE:: CaseName, OutputFileName
     CHARACTER(LEN=72), SAVE:: InputFileName, RestartFileName
     NAMELIST /DataOutput/ iter, time, L, dL, Ne, Tavg, Eavg
-    NAMELIST /Initial_1/ TimeStep, time, iter0, L, Ne, dL, dV, bundle, &
-                         FNph, RNph, PoolSize
+    NAMELIST /Initial_1/ TimeStep, time, iter0, L, Ne, dL, dV, dA_heat, &
+                         bundle, FNph, RNph, PoolSize
     NAMELIST /Initial_2/ ele, phn, PoolL, PoolR, iNPoolL, iNPoolR
 
 END MODULE VAR_Output

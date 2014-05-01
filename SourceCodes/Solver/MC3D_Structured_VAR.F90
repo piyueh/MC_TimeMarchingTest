@@ -182,7 +182,6 @@ IMPLICIT NONE
     REAL(KIND=8), ALLOCATABLE, SAVE:: HinjectL(:, :), HinjectR(:, :)
     REAL(KIND=8), ALLOCATABLE, SAVE:: qL(:, :), qC(:, :), qR(:, :)
     TYPE(Phonon), ALLOCATABLE, SAVE:: HeatPhn(:)
-    INTEGER(KIND=4), ALLOCATABLE, SAVE:: NinjectL(:, :), NinjectR(:, :)
 
 
     !------------------------------------------------------------------
@@ -219,8 +218,7 @@ IMPLICIT NONE
     NAMELIST /DataOutput/ iter, time, L, dL, Ne, Tavg, Eavg
     NAMELIST /Initial_1/ TimeStep, time, iter0, L, Ne, dL, dV, dA_heat, &
                          bundle, FNph, RNph, PoolSize
-    NAMELIST /Initial_2/ ele, phn, PoolL, PoolR, iNPoolL, iNPoolR, &
-                         TFPoolL, TFPoolR
+    NAMELIST /Initial_2/ ele, phn, PoolL, PoolR, iNPoolL, iNPoolR
 
 END MODULE VAR_Output
 

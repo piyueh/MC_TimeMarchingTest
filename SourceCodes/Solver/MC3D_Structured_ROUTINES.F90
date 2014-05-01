@@ -21,34 +21,105 @@ USE VAR_ALL
 IMPLICIT NONE
 REAL(KIND=8):: R1
 INTEGER(KIND=4):: i, j, k, tmpI1, mt
+TYPE(Phonon), ALLOCATABLE:: tmpPhn(:)
 
+    
     NEmpty = 0
     ele%E = 0D0
     ele%Ntol = 0
     EmptyID = -1
     phId = -1
-    i = 0
 
-    DO tmpI1 = 1, FNph
-        IF ( phn(tmpI1)%Exist ) THEN
-            i = phn(tmpI1)%eID(1)
-            j = phn(tmpI1)%eID(2)
-            k = phn(tmpI1)%eID(3)
+    RNph = COUNT( phn%Exist )
+    RNHeatPh = COUNT( HeatPhn%Exist )
+    
+    IF ( (RNHeatPh + RNph).gt.FNph ) THEN
+    
+        mt = RNHeatPh + RNph
+        
+        ALLOCATE( tmpPhn(mt) )
+        
+        mt = 0
+        DO tmpI1 = 1, FNph
+            IF ( phn(tmpI1)%Exist ) THEN
+                i = phn(tmpI1)%eID(1)
+                j = phn(tmpI1)%eID(2)
+                k = phn(tmpI1)%eID(3)
+                
+                ele(i, j, k)%Ntol = ele(i, j, k)%Ntol + 1
+                ele(i, j, k)%E = ele(i, j, k)%E + phn(tmpI1)%E
+                
+                mt = mt + 1
+                tmpPhn(mt) = phn(tmpI1)
+            ENDIF
+        ENDDO
+        
+        DO tmpI1 = 1, FNHeatPh
+            IF ( HeatPhn(tmpI1)%Exist ) THEN
+                i = HeatPhn(tmpI1)%eID(1)
+                j = HeatPhn(tmpI1)%eID(2)
+                k = HeatPhn(tmpI1)%eID(3)
+                
+                ele(i, j, k)%Ntol = ele(i, j, k)%Ntol + 1
+                ele(i, j, k)%E = ele(i, j, k)%E + HeatPhn(tmpI1)%E
+                
+                mt = mt + 1
+                tmpPhn(mt) = HeatPhn(tmpI1)
+                HeatPhn(tmpI1)%Exist = .FALSE.
+            ENDIF
+        ENDDO
+        
+        DEALLOCATE( phn )
+        FNph = INT( mt * 1.2 + 0.5 )
+        ALLOCATE( phn(FNph) )
+        phn(1:mt) = tmpPhn
+        DEALLOCATE( tmpPhn )
+        
+        NEmpty = FNph - mt 
+        EmptyID(1:NEmpty) = (/ (i, i = mt+1, FNph) /)
+    
+    ELSE
+        
+        DO tmpI1 = 1, FNph
+            IF ( phn(tmpI1)%Exist ) THEN
+                i = phn(tmpI1)%eID(1)
+                j = phn(tmpI1)%eID(2)
+                k = phn(tmpI1)%eID(3)
 
-            ele(i, j, k)%Ntol = ele(i, j, k)%Ntol + 1
+                ele(i, j, k)%Ntol = ele(i, j, k)%Ntol + 1
+                ele(i, j, k)%E = ele(i, j, k)%E + phn(tmpI1)%E
+            ELSE
+                NEmpty = NEmpty + 1
+                EmptyID(NEmpty) = tmpI1
+            ENDIF
+        ENDDO
+        
+        DO tmpI1 = 1, FNHeatPh
+            IF ( HeatPhn(tmpI1)%Exist ) THEN
+                i = HeatPhn(tmpI1)%eID(1)
+                j = HeatPhn(tmpI1)%eID(2)
+                k = HeatPhn(tmpI1)%eID(3)
+                
+                ele(i, j, k)%Ntol = ele(i, j, k)%Ntol + 1
+                ele(i, j, k)%E = ele(i, j, k)%E + HeatPhn(tmpI1)%E
+                
+                phn(EmptyID(NEmpty)) = HeatPhn(tmpI1)
+                NEmpty = NEmpty - 1
+                HeatPhn(tmpI1)%Exist = .FALSE.
+            ENDIF
+        ENDDO
+        
+    ENDIF
 
-            ele(i, j, k)%E = ele(i, j, k)%E + phn(tmpI1)%E
-        ELSE
-            NEmpty = NEmpty + 1
-            EmptyID(NEmpty) = tmpI1
-        ENDIF
-    ENDDO
-
+    RNph = RNph + RNHeatPh
+    RNHeatPh = 0
+    
     ele%E = ele%E + ele%Ediff
     IF ( ANY( ele%E.le.0D0 ) ) CALL Errors(3)
 
     RNph = SUM( ele%Ntol )
     IF ( NEmpty.ne.(FNph - RNph) ) CALL Errors(4)
+    
 
     tmpI1 = 0
     DO k = 1, Ne(3); DO j = 1, Ne(2); DO i = 1, Ne(1)
@@ -123,10 +194,10 @@ END SUBROUTINE Pseudo_ScatteringRate
 !----------------------------------------------------------------------
 ! Determine Random Free Flight Time
 !----------------------------------------------------------------------
-SUBROUTINE FreeFlightTime( Rseed )
+SUBROUTINE FreeFlightTime( dt, Rseed )
 USE VAR_Others, ONLY: GammaT
 IMPLICIT NONE
-REAL(KIND=8):: R
+REAL(KIND=8):: R, dt
 TYPE(rng_t):: Rseed
 
     CALL RAN_NUM( Rseed, R )
