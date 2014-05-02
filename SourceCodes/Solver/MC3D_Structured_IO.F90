@@ -48,11 +48,11 @@ IMPLICIT NONE
     phId = -1
     EmptyID = -1
 
-    ALLOCATE( HinjectL(Ne(1), Ne(2)) )
-    ALLOCATE( HinjectR(Ne(1), Ne(2)) )
-    ALLOCATE( qL(Ne(1), Ne(2)) )
-    ALLOCATE( qC(Ne(1), Ne(2)) )
-    ALLOCATE( qR(Ne(1), Ne(2)) )
+    ALLOCATE( HinjectL(Ne(2), Ne(3)) )
+    ALLOCATE( HinjectR(Ne(2), Ne(3)) )
+    ALLOCATE( qL(Ne(2), Ne(3)) )
+    ALLOCATE( qC(Ne(2), Ne(3)) )
+    ALLOCATE( qR(Ne(2), Ne(3)) )
 
     SELECTCASE( BCs(1) )
     CASE(3)
@@ -146,7 +146,8 @@ INTEGER(KIND=4):: i, j, k, mt
         WRITE(OutputFileName, "(I8.8, '.txt')") iter
         OPEN( UNIT = 150, FILE = OutputFileName )
         WRITE(150, *) ct
-        WRITE(150, NML = DataOutput)
+        WRITE(150, NML = DataOutput_1)
+        WRITE(150, NML = DataOutput_2)
         CLOSE( 150 )
 
         Eavg = 0D0

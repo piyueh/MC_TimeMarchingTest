@@ -216,8 +216,9 @@ IMPLICIT NONE
     INTEGER(KIND=4), SAVE:: nOutput
     CHARACTER(LEN=72), SAVE:: CaseName, OutputFileName
     CHARACTER(LEN=72), SAVE:: InputFileName, RestartFileName
-    NAMELIST /DataOutput/ iter, time, L, dL, Ne, qfluxL, qfluxC, &
-                          qfluxR, qL, qC, qR, Tavg, Eavg
+    NAMELIST /DataOutput_1/ iter, time, L, dL, Ne, qfluxL, qfluxC, &
+                            qfluxR
+    NAMELIST /DataOutput_2/ qL, qC, qR, Tavg, Eavg
     NAMELIST /Initial_1/ TimeStep, time, iter0, L, Ne, dL, dV, dA_heat, &
                          bundle, FNph, RNph, PoolSize
     NAMELIST /Initial_2/ ele, phn, PoolL, PoolR, iNPoolL, iNPoolR

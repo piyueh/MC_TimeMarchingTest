@@ -7,6 +7,7 @@
 !!#####################################################################
 PROGRAM main
 USE RNG
+USE HEAT, ONLY: Fixed_Boundary_T
 USE VAR_ALL
 USE ADV
 USE IO
@@ -45,7 +46,7 @@ TYPE(rng_t), ALLOCATABLE:: SeedMP(:)
 
     WRITE(*, '("Enter How Many Steps It Outputs Once: ")', ADVANCE = 'NO')
     !READ(*, *) nOutput
-    nOutput = 100
+    nOutput = 1000
 
     WRITE(*, '("Enter the Method for Time Marching: ")', ADVANCE = 'NO')
     !READ(*, *) WAY_FlightTime
@@ -56,6 +57,7 @@ TYPE(rng_t), ALLOCATABLE:: SeedMP(:)
 
     CALL initialize
     CALL Reorder_CellInfo
+    !CALL Fixed_Boundary_T
     CALL CreateDelete( SeedMP(1) )
 
     CALL Output_Trans
@@ -115,10 +117,11 @@ TYPE(rng_t):: SeedMP(NCores)
 
     CALL CPU_TIME( t(3) )
     CALL Reorder_CellInfo
-
+    !CALL Fixed_Boundary_T
+    
     CALL CPU_TIME( t(4) )
     CALL CreateDelete( SeedMP(iCPU) )
-
+    
     CALL CPU_TIME( t(5) )
 
 END SUBROUTINE advance

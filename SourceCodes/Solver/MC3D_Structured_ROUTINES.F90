@@ -114,7 +114,15 @@ TYPE(Phonon), ALLOCATABLE:: tmpPhn(:)
     RNph = RNph + RNHeatPh
 
     ele%E = ele%E + ele%Ediff
-    IF ( ANY( ele%E.le.0D0 ) ) CALL Errors(3)
+    IF ( ANY( ele%E.le.0D0 ) ) THEN
+        DO k = 1, Ne(3); DO j = 1, Ne(2); DO i = 1, Ne(1)
+            IF (ele(i, j, k)%E.le.0D0) THEN
+                WRITE(*, *) i, j, k
+                WRITE(*, *) ele(i, j, k)
+            ENDIF
+        ENDDO; ENDDO; ENDDO
+        CALL Errors(3)
+    ENDIF
 
     RNph = SUM( ele%Ntol )
     IF ( NEmpty.ne.(FNph - RNph) ) CALL Errors(4)
