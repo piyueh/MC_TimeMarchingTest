@@ -25,7 +25,7 @@ TYPE(rng_t), ALLOCATABLE:: SeedMP(:)
 
     WRITE(*, '("Enter BCs (BCx, BCy, BCz): ")', ADVANCE = 'NO')
     !READ(*, *) BCs
-    BCs = (/ 1, 2, 2 /)
+    BCs = (/ 3, 2, 2 /)
 
 
     WRITE(*, '("Enter the Numer of CPU Cores: ")', ADVANCE = 'NO')
@@ -115,10 +115,10 @@ TYPE(rng_t):: SeedMP(NCores)
 
     CALL CPU_TIME( t(3) )
     CALL Reorder_CellInfo
-    
+
     CALL CPU_TIME( t(4) )
     CALL CreateDelete( SeedMP(iCPU) )
-    
+
     CALL CPU_TIME( t(5) )
 
 END SUBROUTINE advance

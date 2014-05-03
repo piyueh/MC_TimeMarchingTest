@@ -24,8 +24,8 @@ IMPLICIT NONE
 
     WRITE(*, '("Enter Boundary Temperatures (TL, TR): ")', ADVANCE = 'NO')
     !READ(*, *) TBCL, TBCR
-    TBCL = 330D0
-    TBCR = 330D0
+    TBCL = 350D0
+    TBCR = 310D0
 
     CALL init_inj_ph_prop( TBCL, VphBCL, EphBCL, bundle)
     CALL init_inj_ph_prop( TBCR, VphBCR, EphBCR, bundle)
@@ -150,10 +150,7 @@ IMPLICIT NONE
 TYPE(rng_t), INTENT(INOUT):: RSeed
 REAL(KIND=8):: R1, x, Vph, Eph
 INTEGER(KIND=4):: i, j, k, mt, eID(3)
-    
-    PoolL(PoolSize, :, :)%Mat = -1
-    PoolR(PoolSize, :, :)%Mat = -1
-    
+
     RNHeatPh = 0
 
     CALL RAN_NUM( RSeed, dtHeat )

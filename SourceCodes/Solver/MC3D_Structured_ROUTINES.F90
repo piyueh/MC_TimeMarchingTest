@@ -85,22 +85,22 @@ TYPE(Phonon), ALLOCATABLE:: tmpPhn(:)
                 i = phn(tmpI1)%eID(1)
                 j = phn(tmpI1)%eID(2)
                 k = phn(tmpI1)%eID(3)
-                
-                IF ( (INT(phn(tmpI1)%xyz(1) / dL(1)) + 1).ne.i ) THEN
-                    WRITE(*, *) tmpI1
-                    WRITE(*, *) phn(tmpI1)
-                    CALL Errors(201)
-                ENDIF
-                IF ( (INT(phn(tmpI1)%xyz(2) / dL(2)) + 1).ne.j ) THEN
-                    WRITE(*, *) tmpI1
-                    WRITE(*, *) phn(tmpI1)
-                    CALL Errors(202)
-                ENDIF
-                IF ( (INT(phn(tmpI1)%xyz(3) / dL(3)) + 1).ne.k ) THEN
-                    WRITE(*, *) tmpI1
-                    WRITE(*, *)
-                    CALL Errors(203)
-                ENDIF
+
+                !IF ( (INT(phn(tmpI1)%xyz(1) / dL(1)) + 1).ne.i ) THEN
+                !    WRITE(*, *) tmpI1
+                !    WRITE(*, *) phn(tmpI1)
+                !    CALL Errors(201)
+                !ENDIF
+                !IF ( (INT(phn(tmpI1)%xyz(2) / dL(2)) + 1).ne.j ) THEN
+                !    WRITE(*, *) tmpI1
+                !    WRITE(*, *) phn(tmpI1)
+                !    CALL Errors(202)
+                !ENDIF
+                !IF ( (INT(phn(tmpI1)%xyz(3) / dL(3)) + 1).ne.k ) THEN
+                !    WRITE(*, *) tmpI1
+                !    WRITE(*, *)
+                !    CALL Errors(203)
+                !ENDIF
 
                 ele(i, j, k)%Ntol = ele(i, j, k)%Ntol + 1
                 ele(i, j, k)%E = ele(i, j, k)%E + phn(tmpI1)%E
@@ -115,10 +115,10 @@ TYPE(Phonon), ALLOCATABLE:: tmpPhn(:)
                 i = HeatPhn(tmpI1)%eID(1)
                 j = HeatPhn(tmpI1)%eID(2)
                 k = HeatPhn(tmpI1)%eID(3)
-                
-                IF ( (INT(HeatPhn(tmpI1)%xyz(1) / dL(1)) + 1).ne.i ) CALL Errors(204)
-                IF ( (INT(HeatPhn(tmpI1)%xyz(2) / dL(2)) + 1).ne.j ) CALL Errors(205)
-                IF ( (INT(HeatPhn(tmpI1)%xyz(3) / dL(3)) + 1).ne.k ) CALL Errors(206)
+
+                !IF ( (INT(HeatPhn(tmpI1)%xyz(1) / dL(1)) + 1).ne.i ) CALL Errors(204)
+                !IF ( (INT(HeatPhn(tmpI1)%xyz(2) / dL(2)) + 1).ne.j ) CALL Errors(205)
+                !IF ( (INT(HeatPhn(tmpI1)%xyz(3) / dL(3)) + 1).ne.k ) CALL Errors(206)
 
                 ele(i, j, k)%Ntol = ele(i, j, k)%Ntol + 1
                 ele(i, j, k)%E = ele(i, j, k)%E + HeatPhn(tmpI1)%E
@@ -134,7 +134,7 @@ TYPE(Phonon), ALLOCATABLE:: tmpPhn(:)
     RNph = RNph + RNHeatPh
 
     ele%E = ele%E + ele%Ediff
-    
+
     IF ( ANY( ele%E.le.0D0 ) ) CALL Errors(3)
     IF ( RNph.ne.SUM( ele%Ntol ) ) CALL Errors(100)
     IF ( NEmpty.ne.(FNph - RNph) ) CALL Errors(4)
