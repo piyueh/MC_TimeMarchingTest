@@ -361,13 +361,13 @@ INTEGER(KIND=4):: tmpI1
         phm%Vxyz(2) = phm%V * DSQRT( 1D0 - tmpR1**2 ) * DCOS( tmpR2 )
         phm%Vxyz(3) = phm%V * DSQRT( 1D0 - tmpR1**2 ) * DSIN( tmpR2 )
     CASE(2)
-        phm%Vxyz(1) = phm%V * DSQRT( 1D0 - tmpR1**2 ) * DCOS( tmpR2 )
-        phm%Vxyz(2) = phm%V * tmpR1
-        phm%Vxyz(3) = phm%V * DSQRT( 1D0 - tmpR1**2 ) * DSIN( tmpR2 )
-    CASE(3)
-        phm%Vxyz(3) = phm%V * tmpR1
-        phm%Vxyz(2) = phm%V * DSQRT( 1D0 - tmpR1**2 ) * DCOS( tmpR2 )
         phm%Vxyz(1) = phm%V * DSQRT( 1D0 - tmpR1**2 ) * DSIN( tmpR2 )
+        phm%Vxyz(2) = phm%V * tmpR1
+        phm%Vxyz(3) = phm%V * DSQRT( 1D0 - tmpR1**2 ) * DCOS( tmpR2 )
+    CASE(3)
+        phm%Vxyz(1) = phm%V * DSQRT( 1D0 - tmpR1**2 ) * DCOS( tmpR2 )
+        phm%Vxyz(2) = phm%V * DSQRT( 1D0 - tmpR1**2 ) * DSIN( tmpR2 )
+        phm%Vxyz(3) = phm%V * tmpR1
     ENDSELECT
 
 END SUBROUTINE Diffused
@@ -391,11 +391,13 @@ INTEGER(KIND=4):: tmpI1, tmpI2
 
     SELECTCASE( tmpI2 )
     CASE(1)
-        IF ( phm%eID(tmpI1).ne.Ne(tmpI1) ) CALL Errors(9)
+        IF ( phm%eID(tmpI1).ne.Ne(tmpI1) ) CALL Errors(411)
+        IF ( phm%Vxyz(tmpI1).le.0 ) CALL Errors(412)
         phm%xyz(tmpI1) = 0D0
         phm%eID(tmpI1) = 1
     CASE(-1)
-        IF ( phm%eID(tmpI1).ne.1 ) CALL Errors(10)
+        IF ( phm%eID(tmpI1).ne.1 ) CALL Errors(413)
+        IF ( phm%Vxyz(tmpI1).ge.0 ) CALL Errors(414)
         phm%xyz(tmpI1) = L(tmpI1)
         phm%eID(tmpI1) = Ne(tmpI1)
     END SELECT
@@ -478,6 +480,8 @@ INTEGER(KIND=4):: NAddTol
                 s2 = s1 + NAdd(i, j, k) - 1
 
                 ALLOCATE( R(NAdd(i, j, k), 5) )
+                
+                CALL RAN_NUM( RSeed, R )
 
                 R(:, 4) = 2D0 * R(:, 4) - 1D0
                 R(:, 5) = R(:, 5) * M_PI * 2D0
@@ -504,9 +508,9 @@ INTEGER(KIND=4):: NAddTol
                 phn(EmptyID(s1:s2))%Org(2) = phn(EmptyID(s1:s2))%xyz(2)
                 phn(EmptyID(s1:s2))%Org(3) = phn(EmptyID(s1:s2))%xyz(3)
 
-                phn(EmptyID(s1:s2))%Dis(1) = 0D0
-                phn(EmptyID(s1:s2))%Dis(2) = 0D0
-                phn(EmptyID(s1:s2))%Dis(3) = 0D0
+                phn(EmptyID(s1:s2))%Dis(1) = -10D0
+                phn(EmptyID(s1:s2))%Dis(2) = -10D0
+                phn(EmptyID(s1:s2))%Dis(3) = -100D0
 
                 phn(EmptyID(s1:s2))%Mat = ele(i, j, k)%Mat
 
@@ -538,6 +542,7 @@ END SUBROUTINE CreateDelete
 ! Phonon encounter heat control BC
 !----------------------------------------------------------------------
 SUBROUTINE OutDoamin( phm, dtRemain, hit )
+USE ROUTINES
 USE VAR_TYPES
 USE VAR_BC, ONLY: PoolSize, PoolL, PoolR, iNPoolL, iNPoolR, qL, qR
 IMPLICIT NONE
@@ -551,6 +556,7 @@ INTEGER(KIND=4):: I1, I2, I3
 
     SELECTCASE( hit )
     CASE(1)
+        IF ( phm%Vxyz(1).le.0D0 ) CALL Errors(511)
         IF ( iNPoolL(I2, I3).eq.PoolSize ) iNPoolL(I2, I3) = 0
         iNPoolL(I2, I3) = iNPoolL(I2, I3) + 1
         I1 = iNPoolL(I2, I3)
@@ -563,6 +569,7 @@ INTEGER(KIND=4):: I1, I2, I3
         PoolL(I1, I2, I3)%Mat = phm%Mat
         qR(I2, I3) = qR(I2, I3) - phm%E
     CASE(-1)
+        IF ( phm%Vxyz(1).ge.0D0 ) CALL Errors(512)
         IF ( iNPoolR(I2, I3).eq.PoolSize ) iNPoolR(I2, I3) = 0
         iNPoolR(I2, I3) = iNPoolR(I2, I3) + 1
         I1 = iNPoolR(I2, I3)
@@ -574,6 +581,8 @@ INTEGER(KIND=4):: I1, I2, I3
         PoolR(I1, I2, I3)%dtRemain = dtRemain
         PoolR(I1, I2, I3)%Mat = phm%Mat
         qL(I2, I3) = qL(I2, I3) - phm%E
+    CASE DEFAULT
+        CALL Errors(513)
     END SELECT
 
     phm%Exist = .FALSE.

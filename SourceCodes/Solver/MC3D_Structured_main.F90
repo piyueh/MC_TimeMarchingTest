@@ -7,7 +7,6 @@
 !!#####################################################################
 PROGRAM main
 USE RNG
-USE HEAT, ONLY: Fixed_Boundary_T
 USE VAR_ALL
 USE ADV
 USE IO
@@ -26,7 +25,7 @@ TYPE(rng_t), ALLOCATABLE:: SeedMP(:)
 
     WRITE(*, '("Enter BCs (BCx, BCy, BCz): ")', ADVANCE = 'NO')
     !READ(*, *) BCs
-    BCs = (/ 3, 2, 2 /)
+    BCs = (/ 1, 2, 2 /)
 
 
     WRITE(*, '("Enter the Numer of CPU Cores: ")', ADVANCE = 'NO')
@@ -57,7 +56,6 @@ TYPE(rng_t), ALLOCATABLE:: SeedMP(:)
 
     CALL initialize
     CALL Reorder_CellInfo
-    !CALL Fixed_Boundary_T
     CALL CreateDelete( SeedMP(1) )
 
     CALL Output_Trans
@@ -117,7 +115,6 @@ TYPE(rng_t):: SeedMP(NCores)
 
     CALL CPU_TIME( t(3) )
     CALL Reorder_CellInfo
-    !CALL Fixed_Boundary_T
     
     CALL CPU_TIME( t(4) )
     CALL CreateDelete( SeedMP(iCPU) )

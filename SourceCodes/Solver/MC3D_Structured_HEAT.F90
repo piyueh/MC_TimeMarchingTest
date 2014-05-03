@@ -13,52 +13,6 @@ CONTAINS
 
 !======================================================================
 !----------------------------------------------------------------------
-! Make the temperature of boundary element constant.
-!----------------------------------------------------------------------
-SUBROUTINE Fixed_Boundary_T
-USE VAR_ALL
-USE ROUTINES
-IMPLICIT NONE
-REAL(KIND=8):: U
-INTEGER(KIND=4):: i, j, k, mt
-    
-    i = 1
-    DO k = 1, Ne(3); DO j = 1, Ne(2)
-        phn(phID(ele(i, j, k)%Nbg:ele(i, j, k)%Ned))%Exist = .FALSE.
-        mt = ele(i, j, k)%Mat
-        CALL energy( mt, TBCL, U )
-        ele(i, j, k)%T = TBCL
-        
-        CALL Etable( mt, 2, U, ele(i, j, k)%ND )
-        ele(i, j, k)%Eph = U / ele(i, j, k)%ND * bundle
-        ele(i, j, k)%Ediff = U * dV
-        ele(i, j, k)%E = U * dV
-        CALL Etable( mt, 4, U, ele(i, j, k)%Vph )
-        CALL Etable( mt, 5, U, ele(i, j, k)%MFP )
-        ele(i, j, k)%SCR = ele(i, j, k)%Vph / ele(i, j, k)%MFP
-    ENDDO; ENDDO
-    
-    i = Ne(1)
-    DO k = 1, Ne(3); DO j = 1, Ne(2)
-        phn(phID(ele(i, j, k)%Nbg:ele(i, j, k)%Ned))%Exist = .FALSE.
-        mt = ele(i, j, k)%Mat
-        CALL energy( mt, TBCR, U )
-        ele(i, j, k)%T = TBCR
-        
-        CALL Etable( mt, 2, U, ele(i, j, k)%ND )
-        ele(i, j, k)%Eph = U / ele(i, j, k)%ND * bundle
-        ele(i, j, k)%Ediff = U * dV
-        ele(i, j, k)%E = U * dV
-        CALL Etable( mt, 4, U, ele(i, j, k)%Vph )
-        CALL Etable( mt, 5, U, ele(i, j, k)%MFP )
-        ele(i, j, k)%SCR = ele(i, j, k)%Vph / ele(i, j, k)%MFP
-    ENDDO; ENDDO
-
-END SUBROUTINE Fixed_Boundary_T
-
-
-!======================================================================
-!----------------------------------------------------------------------
 ! Initialize heat control boundary conditions.
 !----------------------------------------------------------------------
 SUBROUTINE init_heat_BC
@@ -70,8 +24,8 @@ IMPLICIT NONE
 
     WRITE(*, '("Enter Boundary Temperatures (TL, TR): ")', ADVANCE = 'NO')
     !READ(*, *) TBCL, TBCR
-    TBCL = 350D0
-    TBCR = 350D0
+    TBCL = 330D0
+    TBCR = 330D0
 
     CALL init_inj_ph_prop( TBCL, VphBCL, EphBCL, bundle)
     CALL init_inj_ph_prop( TBCR, VphBCR, EphBCR, bundle)

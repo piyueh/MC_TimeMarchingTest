@@ -64,6 +64,12 @@ IMPLICIT NONE
         qfluxC = 0
         qfluxR = 0
     CASE DEFAULT
+        FNHeatPh = 1
+        RNHeatPh = 0
+        ALLOCATE( HeatPhn(FNHeatPh) )
+        ALLOCATE( dtHeat(FNHeatPh) )
+        HeatPhn%Exist = .FALSE.
+        dtHeat = 0D0
         HinjectL = 0
         HinjectR = 0
         qL = 0
@@ -170,7 +176,8 @@ SUBROUTINE ShowOnScreen( CPUTime )
 IMPLICIT NONE
 REAL(KIND=8):: CPUTime(5)
 
-    WRITE(*, "(I7, 2X, I8, 2X, 4(ES7.1E1, 2X))") iter, RNph, &
+    IF ( MOD( iter, 100).eq.0 ) &
+    WRITE(*, "(I7, 1X, I8, 4(1X, ES7.1E1))") iter, RNph, &
                                              CPUTime(2) - CPUTime(1), &
                                              CPUTime(3) - CPUTime(2), &
                                              CPUTime(4) - CPUTime(3), &
