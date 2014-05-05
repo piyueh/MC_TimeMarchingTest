@@ -49,7 +49,7 @@ TYPE(rng_t), ALLOCATABLE:: SeedMP(:)
 
     WRITE(*, '("Enter the Method for Time Marching: ")', ADVANCE = 'NO')
     !READ(*, *) WAY_FlightTime
-    WAY_FlightTime = 1
+    WAY_FlightTime = 2
 
     CALL Initialize_Ge( Ge_table, Ge_start, dU_Ge, N_Ge1, N_Ge2 )
     CALL Initialize_Si( Si_table, Si_start, dU_Si, N_Si1, N_Si2 )
