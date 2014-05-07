@@ -93,26 +93,22 @@ TYPE(Phonon), INTENT(INOUT):: phm
 REAL(KIND=8), INTENT(INOUT):: dtRemain
 TYPE(rng_t), INTENT(INOUT):: RSeed
 REAL(KIND=8):: dtUsed
-INTEGER(KIND=4):: hit
+INTEGER(KIND=4):: hit1, hit2
 LOGICAL:: TF
 
-    CALL hit_ElementSurface( phm, dtUsed, hit )
+    CALL hit_ElementSurface( phm, dtUsed, hit1, hit2 )
 
     IF ( dtUsed.gt.dtRemain ) THEN
 
-        dtUsed = dtRemain
+        phm%xyz = phm%xyz + dtRemain * phm%Vxyz
+        CALL Adjust_scattering( phm, dtRemain, Rseed, TF )
         dtRemain = 0D0
-        phm%xyz = phm%xyz + dtUsed * phm%Vxyz
-        CALL Adjust_scattering( phm, dtUsed, Rseed, TF )
 
     ELSEIF ( dtUsed.le.dtRemain ) THEN
 
         phm%xyz = phm%xyz + dtUsed * phm%Vxyz
-        phm%xyz(IABS( hit )) = ele(phm%eID(1), &
-                                   phm%eID(2), &
-                                   phm%eID(3)) &
-                                   %BD((ISIGN(1, hit)+1)/2+1, &
-                                       IABS( hit ))
+        phm%xyz(hit2) = ele(phm%eID(1), phm%eID(2), phm%eID(3)) &
+                                                %BD((hit1+1)/2+1, hit2)
         dtRemain = dtRemain - dtUsed
 
         CALL Adjust_scattering( phm, dtUsed, Rseed, TF )
@@ -122,27 +118,31 @@ LOGICAL:: TF
         !  false: scattering didn't occured. The phonon must
         !         continue going through the element surface.
 
-        CALL still_GoThrough( TF, hit, phm%Vxyz(IABS( hit )) )
+        CALL still_GoThrough( TF, hit1, phm%Vxyz(3) )
         ! TF =
         !   true: the phonon continues going through element surface
         !  false: otherwise
 
         IF ( TF ) THEN
-            CALL touchDomainBC( phm, hit, TF )
+
+            phm%eID(hit2) = phm%eID(hit2) + hit1
+            CALL touchDomainBC( phm, hit1, hit2, TF )
 
             SELECTCASE( TF )
             CASE(.TRUE.)
-                SELECTCASE( BCs(IABS( hit )) )
+                SELECTCASE( BCs(hit2) )
                 CASE(1)
-                    CALL Diffused( phm, hit, Rseed )
+                    CALL Diffused( phm, hit1, hit2, Rseed )
+                    phm%eID(hit2) = phm%eID(hit2) - hit1
                 CASE(2)
-                    CALL Perodic( phm, hit )
+                    CALL Perodic( phm, hit1, hit2 )
                 CASE(3)
-                    CALL OutDoamin( phm, dtRemain, hit )
+                    ! Only possible when hit2 = 1
+                    CALL OutDoamin( phm, dtRemain, hit1 )
                 END SELECT
             CASE(.FALSE.)
-                phm%eID(IABS( hit )) = phm%eID(IABS( hit )) + &
-                                       ISIGN(1, hit)
+                CALL Mat_Interface
+
             ENDSELECT
         ENDIF
 
@@ -156,7 +156,7 @@ END SUBROUTINE phn_adv_CT
 ! Adjust the element surface the phonon will hit first.  And calculate
 ! the time it needs.
 !----------------------------------------------------------------------
-SUBROUTINE hit_ElementSurface( phm, dtUsed, hit )
+SUBROUTINE hit_ElementSurface( phm, dtUsed, hit1. hit2 )
 USE VAR_TYPES
 USE VAR_SPACES, ONLY: ele
 IMPLICIT NONE
@@ -164,7 +164,7 @@ TYPE(Phonon), INTENT(IN):: phm
 REAL(KIND=8), INTENT(OUT):: dtUsed
 INTEGER(KIND=4), INTENT(OUT):: hit
 REAL(KIND=8):: ds(3)
-INTEGER(KIND=4):: i, tmpI1, tmpI2, tmpI3, Loc(1), face(3)
+INTEGER(KIND=4):: i, tmpI1, tmpI2, tmpI3, Loc(1), dir(3)
 
     tmpI1 = phm%eID(1)
     tmpI2 = phm%eID(2)
@@ -174,20 +174,22 @@ INTEGER(KIND=4):: i, tmpI1, tmpI2, tmpI3, Loc(1), face(3)
         IF ( phm%Vxyz(i).gt.0 ) THEN
             ds(i) = (ele(tmpI1, tmpI2, tmpI3)%BD(2, i) - phm%xyz(i)) /&
                     phm%Vxyz(i)
-            face(i) = i
+            dir(i) = 1
         ELSEIF ( phm%Vxyz(i).lt.0 ) THEN
             ds(i) = (ele(tmpI1, tmpI2, tmpI3)%BD(1, i) - phm%xyz(i)) /&
                     phm%Vxyz(i)
-            face(i) = -i
+            dir(i) = -1
         ELSE
             ds(i) = 1D8
-            face(i) = 0
+            dir(i) = 0
         ENDIF
     ENDDO
 
     Loc = MINLOC( ds )
-    dtUsed = ds(Loc(1))
-    hit = face(Loc(1))
+    hit2 = Loc(1)
+    dtUsed = ds(hit2)
+    hit1 = dir(hit2)
+
 
 END SUBROUTINE hit_ElementSurface
 
@@ -267,14 +269,14 @@ END SUBROUTINE intrinsic_scattering
 !----------------------------------------------------------------------
 ! Adjust whether the phonon still goes through the element surface.
 !----------------------------------------------------------------------
-SUBROUTINE still_GoThrough( TF, hit, V )
+SUBROUTINE still_GoThrough( TF, dir, V )
 IMPLICIT NONE
 LOGICAL, INTENT(INOUT):: TF
-INTEGER(KIND=4), INTENT(IN):: hit
+INTEGER(KIND=4), INTENT(IN):: dir
 REAL(KIND=8), INTENT(IN):: V
 
     IF ( TF ) THEN
-        IF ( (V * hit).le.0 ) TF = .FALSE.
+        IF ( (V * dir).le.0 ) TF = .FALSE.
     ELSE
         TF = .TRUE.
     ENDIF
@@ -286,20 +288,22 @@ END SUBROUTINE still_GoThrough
 !----------------------------------------------------------------------
 ! Out Domain
 !----------------------------------------------------------------------
-SUBROUTINE touchDomainBC( phm, hit, TF )
+SUBROUTINE touchDomainBC( phm, hit1, hit2, TF )
 USE VAR_TYPES
 USE VAR_SPACES, ONLY: Ne
 IMPLICIT NONE
 TYPE(Phonon), INTENT(INOUT):: phm
-INTEGER(KIND=4), INTENT(IN):: hit
+INTEGER(KIND=4), INTENT(IN):: hit1, hit2
 LOGICAL, INTENT(OUT):: TF
 INTEGER(KIND=4):: tmpI1
 
-    TF = .FALSE.
+    tmpI1 = phm%eID(hit2)
 
-    tmpI1 = phm%eID(IABS( hit )) + ISIGN(1, hit)
-
-    IF ( (tmpI1.gt.Ne(IABS( hit ))) .OR. (tmpI1.lt.1) ) TF = .TRUE.
+    IF ( (tmpI1.gt.Ne(hit2)) .OR. (tmpI1.lt.1) ) THEN
+        TF = .TRUE.
+    ELSE
+        TF = .FALSE.
+    ENDIF
 
 END SUBROUTINE touchDomainBC
 
@@ -308,15 +312,14 @@ END SUBROUTINE touchDomainBC
 !----------------------------------------------------------------------
 ! Diffused Response on domain boundaries
 !----------------------------------------------------------------------
-SUBROUTINE Diffused( phm, hit, Rseed )
+SUBROUTINE Diffused( phm, hit1, hit2, Rseed )
 USE VAR_TYPES
 USE VAR_Others, ONLY: M_PI
 IMPLICIT NONE
 TYPE(Phonon), INTENT(INOUT):: phm
-INTEGER(KIND=4), INTENT(IN):: hit
+INTEGER(KIND=4), INTENT(IN):: hit1, hit2
 TYPE(rng_t), INTENT(INOUT):: Rseed
 REAL(KIND=8):: tmpR1, tmpR2
-INTEGER(KIND=4):: tmpI1
 
     !------------------------------------------------------------------
     ! V = (+ or -) (r1**0.5) * n +
@@ -340,8 +343,7 @@ INTEGER(KIND=4):: tmpI1
     CALL RAN_NUM( Rseed, tmpR1 )
     CALL RAN_NUM( Rseed, tmpR2 )
 
-    tmpI1 = ISIGN( 1, hit )
-    SELECTCASE( tmpI1)
+    SELECTCASE( hit1)
     CASE(1)
         tmpR1 = - DSQRT( tmpR1 )
     CASE(-1)
@@ -354,8 +356,7 @@ INTEGER(KIND=4):: tmpI1
     ! tmpR2 = 2 * pi * r2
     !------------------------------------------------------------------
 
-    tmpI1 = IABS( hit )
-    SELECTCASE( tmpI1 )
+    SELECTCASE( hit2 )
     CASE(1)
         phm%Vxyz(1) = phm%V * tmpR1
         phm%Vxyz(2) = phm%V * DSQRT( 1D0 - tmpR1**2 ) * DCOS( tmpR2 )
@@ -377,31 +378,22 @@ END SUBROUTINE Diffused
 !----------------------------------------------------------------------
 ! Perodic response on boundary
 !----------------------------------------------------------------------
-SUBROUTINE Perodic( phm, hit )
+SUBROUTINE Perodic( phm, hit1, hit2 )
 USE VAR_TYPES
 USE VAR_SPACES, ONLY: L, Ne
 USE ROUTINES, ONLY: Errors
 IMPLICIT NONE
 TYPE(Phonon), INTENT(INOUT):: phm
-INTEGER(KIND=4), INTENT(IN):: hit
-INTEGER(KIND=4):: tmpI1, tmpI2
+INTEGER(KIND=4), INTENT(IN):: hit1, hit2
 
-    tmpI1 = IABS( hit )
-    tmpI2 = ISIGN( 1, hit )
-
-    SELECTCASE( tmpI2 )
+    SELECTCASE( hit1 )
     CASE(1)
-        IF ( phm%eID(tmpI1).ne.Ne(tmpI1) ) CALL Errors(411)
-        IF ( phm%Vxyz(tmpI1).le.0 ) CALL Errors(412)
-        phm%xyz(tmpI1) = 0D0
-        phm%eID(tmpI1) = 1
+        phm%xyz(hit2) = 0D0
+        phm%eID(hit2) = 1
     CASE(-1)
-        IF ( phm%eID(tmpI1).ne.1 ) CALL Errors(413)
-        IF ( phm%Vxyz(tmpI1).ge.0 ) CALL Errors(414)
-        phm%xyz(tmpI1) = L(tmpI1)
-        phm%eID(tmpI1) = Ne(tmpI1)
+        phm%xyz(hit2) = L(hit2)
+        phm%eID(hit2) = Ne(hit2)
     END SELECT
-
 
 END SUBROUTINE Perodic
 
@@ -480,7 +472,7 @@ INTEGER(KIND=4):: NAddTol
                 s2 = s1 + NAdd(i, j, k) - 1
 
                 ALLOCATE( R(NAdd(i, j, k), 5) )
-                
+
                 CALL RAN_NUM( RSeed, R )
 
                 R(:, 4) = 2D0 * R(:, 4) - 1D0
@@ -541,20 +533,20 @@ END SUBROUTINE CreateDelete
 !----------------------------------------------------------------------
 ! Phonon encounter heat control BC
 !----------------------------------------------------------------------
-SUBROUTINE OutDoamin( phm, dtRemain, hit )
+SUBROUTINE OutDoamin( phm, dtRemain, dir )
 USE ROUTINES
 USE VAR_TYPES
 USE VAR_BC, ONLY: PoolSize, PoolL, PoolR, iNPoolL, iNPoolR, qL, qR
 IMPLICIT NONE
 REAL(KIND=8), INTENT(INOUT):: dtRemain
-INTEGER(KIND=4), INTENT(IN):: hit
+INTEGER(KIND=4), INTENT(IN):: dir
 TYPE(Phonon), INTENT(INOUT):: phm
 INTEGER(KIND=4):: I1, I2, I3
 
     I2 = phm%eID(2)
     I3 = phm%eID(3)
 
-    SELECTCASE( hit )
+    SELECTCASE( dir )
     CASE(1)
         IF ( phm%Vxyz(1).le.0D0 ) CALL Errors(511)
         IF ( iNPoolL(I2, I3).eq.PoolSize ) iNPoolL(I2, I3) = 0
@@ -589,6 +581,50 @@ INTEGER(KIND=4):: I1, I2, I3
     dtRemain = 0D0
 
 END SUBROUTINE OutDoamin
+
+
+!======================================================================
+!----------------------------------------------------------------------
+! Phonon hit the material interface
+!----------------------------------------------------------------------
+SUBROUTINE Mat_Interface( phm, hit1, hit2 )
+IMPLICIT NONE
+INTEGER(KIND=4):: Ix, Iy, Iz, Ix2, Iy2, Iz2
+INTEGER(KIND=4):: mt1, mt2
+
+    SELECTCASE(hit2)
+    CASE(1)
+        Ix = phm%eID(1) - hit1
+        Iy = phm%eID(2)
+        Iz = phm%eID(3)
+    CASE(2)
+        Ix = phm%eID(1)
+        Iy = phm%eID(2) - hit1
+        Iz = phm%eID(3)
+    CASE(3)
+        Ix = phm%eID(1)
+        Iy = phm%eID(2)
+        Iz = phm%eID(3) - hit1
+    END SELECT
+
+    Ix2 = phm%eID(1)
+    Iy2 = phm%eID(2)
+    Iz3 = phm%eID(3)
+
+    mt1 = ele(Ix, Iy, Iz)%Mat
+    mt2 = ele(Ix2, Iy2, Iz2)%Mat
+
+    IF ( mt1.ne.mt2 ) THEN
+
+        CALL 
+        phm%eID = (/ Ix, Iy, Iz /)
+    ENDIF
+
+
+
+
+END SUBROUTINE Mat_Interface
+
 
 !======================================================================
 END MODULE ADV
