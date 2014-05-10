@@ -162,7 +162,7 @@ INTEGER(KIND=4):: i, j, k, mt
         qR = 0D0
         ct = 0
 
-        ! CALL Output_Trans
+        CALL Output_Trans
     ENDIF
 
 END SUBROUTINE Output
@@ -176,7 +176,7 @@ SUBROUTINE ShowOnScreen( CPUTime )
 IMPLICIT NONE
 REAL(KIND=8):: CPUTime(5)
 
-    IF ( MOD( iter, 100).eq.0 ) &
+    !IF ( MOD( iter, 100).eq.0 ) &
     WRITE(*, "(I7, 1X, I8, 4(1X, ES7.1E1))") iter, RNph, &
                                              CPUTime(2) - CPUTime(1), &
                                              CPUTime(3) - CPUTime(2), &

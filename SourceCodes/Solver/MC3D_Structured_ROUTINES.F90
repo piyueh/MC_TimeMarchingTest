@@ -85,7 +85,12 @@ TYPE(Phonon), ALLOCATABLE:: tmpPhn(:)
                 i = phn(tmpI1)%eID(1)
                 j = phn(tmpI1)%eID(2)
                 k = phn(tmpI1)%eID(3)
-
+                
+!                 IF (  ANY( (phn(tmpI1)%xyz - ele(i, j, k)%BD(1,:)).lt.0 ).OR.ANY( (phn(tmpI1)%xyz - ele(i, j, k)%BD(2,:)).gt.0 ) ) THEN
+!                     WRITE(*, *) phn(tmpI1)
+!                     CALL Errors(5001)
+!                 ENDIF
+                
                 ele(i, j, k)%Ntol = ele(i, j, k)%Ntol + 1
                 ele(i, j, k)%E = ele(i, j, k)%E + phn(tmpI1)%E
             ELSE
@@ -115,9 +120,9 @@ TYPE(Phonon), ALLOCATABLE:: tmpPhn(:)
 
     ele%E = ele%E + ele%Ediff
 
-!     IF ( ANY( ele%E.le.0D0 ) ) CALL Errors(3)
-!     IF ( RNph.ne.SUM( ele%Ntol ) ) CALL Errors(100)
-!     IF ( NEmpty.ne.(FNph - RNph) ) CALL Errors(4)
+!      IF ( ANY( ele%E.le.0D0 ) ) CALL Errors(3)
+!      IF ( RNph.ne.SUM( ele%Ntol ) ) CALL Errors(100)
+!      IF ( NEmpty.ne.(FNph - RNph) ) CALL Errors(4)
 
     tmpI1 = 0
     DO k = 1, Ne(3); DO j = 1, Ne(2); DO i = 1, Ne(1)
@@ -156,8 +161,8 @@ TYPE(Phonon), ALLOCATABLE:: tmpPhn(:)
             phId(ele(i, j, k)%Nbg + ele(i, j, k)%Ntol - 1) = tmpI1
         ENDIF
     ENDDO
-!     IF ( ele(Ne(1), Ne(2), Ne(3))%Ned.ne.RNph ) CALL Errors(5)
-!     IF ( SUM( ele%Ntol ).ne.RNph ) CALL Errors(6)
+!      IF ( ele(Ne(1), Ne(2), Ne(3))%Ned.ne.RNph ) CALL Errors(5)
+!      IF ( SUM( ele%Ntol ).ne.RNph ) CALL Errors(6)
 
 END SUBROUTINE Reorder_CellInfo
 

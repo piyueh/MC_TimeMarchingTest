@@ -18,19 +18,17 @@ TYPE(rng_t), ALLOCATABLE:: SeedMP(:)
 
 
     WRITE(*, '("Enter CASE Name: ")', ADVANCE = 'NO')
-    !READ(*, *) CaseName
-    CaseName = "test"
+    READ(*, *) CaseName
     InputFileName = casename(1:LEN_TRIM(casename))//'_initial.txt'
 
 
     WRITE(*, '("Enter BCs (BCx, BCy, BCz): ")', ADVANCE = 'NO')
-    !READ(*, *) BCs
-    BCs = (/ 3, 2, 2 /)
+    READ(*, *) BCs
 
 
     WRITE(*, '("Enter the Numer of CPU Cores: ")', ADVANCE = 'NO')
-    !READ(*, *) NCores
-    NCores = 1
+    READ(*, *) NCores
+    
     ALLOCATE( SeedMP(NCores) )
     CALL RANDOM_SEED()
     DO i = 1, NCores
@@ -39,18 +37,18 @@ TYPE(rng_t), ALLOCATABLE:: SeedMP(:)
     ENDDO
 
     WRITE(*, '("Enter the Maximum Iterations: ")', ADVANCE = 'NO')
-    !READ(*, *) iterations
-    iterations = 20000000
-
-
+    READ(*, *) iterations
+    
+    
     WRITE(*, '("Enter How Many Steps It Outputs Once: ")', ADVANCE = 'NO')
-    !READ(*, *) nOutput
-    nOutput = 1000
+    READ(*, *) nOutput
 
-    WRITE(*, '("Enter the Method for Time Marching: ")', ADVANCE = 'NO')
-    !READ(*, *) WAY_FlightTime
-    WAY_FlightTime = 2
+    
+    WRITE(*, '("Enter the Method for Time Marching: ")')
+    WRITE(*, '("(1: Constant Flight Time, 2: Random Flight Time) ")', ADVANCE = 'NO')
+    READ(*, *) WAY_FlightTime
 
+    
     CALL Initialize_Ge( Ge_table, Ge_start, dU_Ge, N_Ge1, N_Ge2 )
     CALL Initialize_Si( Si_table, Si_start, dU_Si, N_Si1, N_Si2 )
 

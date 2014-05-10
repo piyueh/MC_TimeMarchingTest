@@ -23,9 +23,7 @@ USE VAR_Others, ONLY: TimeStep
 IMPLICIT NONE
 
     WRITE(*, '("Enter Boundary Temperatures (TL, TR): ")', ADVANCE = 'NO')
-    !READ(*, *) TBCL, TBCR
-    TBCL = 350D0
-    TBCR = 310D0
+    READ(*, *) TBCL, TBCR
 
     CALL init_inj_ph_prop( TBCL, VphBCL, EphBCL, bundle)
     CALL init_inj_ph_prop( TBCR, VphBCR, EphBCR, bundle)
@@ -133,7 +131,7 @@ INTEGER(KIND=4):: i
     N = MAX(MAXVAL(U1), MAXVAL(U2)) * MAX(MAXVAL(V1), MAXVAL(V2)) * &
         A * dt * 0.25 / MIN(MINVAL(Eph1), MINVAL(Eph2))
 
-    N = N * 1.2
+    N = N * 4
 
 END SUBROUTINE calc_approx_NHeatPh
 
@@ -150,7 +148,7 @@ IMPLICIT NONE
 TYPE(rng_t), INTENT(INOUT):: RSeed
 REAL(KIND=8):: R1, x, Vph, Eph
 INTEGER(KIND=4):: i, j, k, mt, eID(3)
-
+    
     RNHeatPh = 0
 
     CALL RAN_NUM( RSeed, dtHeat )

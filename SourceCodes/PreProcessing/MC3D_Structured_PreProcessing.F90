@@ -24,11 +24,12 @@ INTEGER(KIND=4):: Npercell
 
     WRITE(*, '("Enter CASE Name: ")', ADVANCE = 'NO')
     !READ(*, *) CaseName
-    CaseName = "test"
+    CaseName = "SuperLattice_V"
     InputFileName = casename(1:LEN_TRIM(casename))//'_initial.txt'
 
     WRITE(*, '("Enter Domain, Lx, Ly, Lz: ")', ADVANCE = 'NO')
-    READ(*, *) L
+    !READ(*, *) L
+    L = (/ 3D2, 25D0, 25D0 /)
 
     CALL Initialize_Ge( Ge_table, Ge_start, dU_Ge, N_Ge1, N_Ge2 )
     CALL Initialize_Si( Si_table, Si_start, dU_Si, N_Si1, N_Si2 )
@@ -66,10 +67,12 @@ REAL(KIND=8):: tmpR1
 INTEGER(KIND=4):: i, j, k, tmpI1, Loc(3), NperCell
 
     WRITE(*, '("Enter Element Numbers, Nx, Ny, Nz: ")', ADVANCE = 'NO')
-    READ(*, *) Ne
+    !READ(*, *) Ne
+    Ne = (/ 120, 5, 5 /)
 
     WRITE(*, '("Enter NperCell: ")', ADVANCE = 'NO')
-    READ(*, *) NperCell
+    !READ(*, *) NperCell
+    NperCell = 333
 
     dL = L / DBLE( Ne )
     dA_heat = dL(2) * dL(3)
@@ -110,6 +113,7 @@ INTEGER(KIND=4):: i, j, k, tmpI1, Loc(3), NperCell
     ele%E = ele%Eph * ele%Ntol
 
     DO k = 1, Ne(3); DO j = 1, Ne(2); DO i = 1, Ne(1)
+        tmpI1 = ele(i, j, k)%Mat
         CALL energy( tmpI1, ele(i, j, k)%T, tmpR1 )
         ele(i, j, k)%Ediff = tmpR1 * dV - ele(i, j, k)%E
     ENDDO; ENDDO; ENDDO
@@ -135,6 +139,12 @@ INTEGER(KIND=4):: i, j, k, tmpI1, Loc(3), NperCell
     IMPLICIT NONE
 
         ele%Mat = 1
+        ele(6:15, :, :)%Mat = 2
+        ele(26:35, :, :)%Mat = 2
+        ele(46:55, :, :)%Mat = 2
+        ele(66:75, :, :)%Mat = 2
+        ele(86:95, :, :)%Mat = 2
+        ele(106:115, :, :)%Mat = 2
 
     END SUBROUTINE Initial_Material
     !==========================================================
@@ -149,18 +159,18 @@ END SUBROUTINE Initialize_Mesh
 SUBROUTINE TimeStep_setup
 USE VAR_ALL
 IMPLICIT NONE
-!CHARACTER:: YN
+CHARACTER:: YN
 
-    !TimeStep = MINVAL( dL ) / MAXVAL( ele%Vph ) / 2D0
-    !
-    !WRITE(*, '("Current TimeStep is: ", F)', ADVANCE = 'NO') TimeStep
-    !WRITE(*, '("Modify TimeStep Manually? (Y/N): ")', ADVANCE = 'NO')
-    !READ(*, *) YN
-    !IF ( YN.eq.'Y' ) THEN
-    !    WRITE(*, '("Enter the New TimeStep: ")', ADVANCE = 'NO')
-    !    READ(*, *) TimeStep
-    !ENDIF
-    TimeStep = 1D0
+    TimeStep = MINVAL( dL ) / MAXVAL( ele%Vph ) / 2D0
+    
+    WRITE(*, '("Current TimeStep is: ", F)', ADVANCE = 'NO') TimeStep
+    WRITE(*, '("Modify TimeStep Manually? (Y/N): ")', ADVANCE = 'NO')
+    READ(*, *) YN
+    IF ( YN.eq.'Y' ) THEN
+        WRITE(*, '("Enter the New TimeStep: ")', ADVANCE = 'NO')
+        READ(*, *) TimeStep
+    ENDIF
+    !TimeStep = 0.25
 
 END SUBROUTINE TimeStep_setup
 
