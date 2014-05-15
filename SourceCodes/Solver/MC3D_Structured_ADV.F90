@@ -96,7 +96,7 @@ END SUBROUTINE phn_adv_RT
 !----------------------------------------------------------------------
 ! Phonon Advance Subroutine - Constant Free Flight Time
 !----------------------------------------------------------------------
-SUBROUTINE phn_adv_CT( phm, RSeed, dtRemain )
+SUBROUTINE phn_adv_CT( phm, RSeed, dtRemain, flag )
 USE VAR_TYPES
 USE VAR_SPACES, ONLY: ele, dV
 USE VAR_BC, ONLY: BCs
@@ -105,8 +105,11 @@ TYPE(Phonon), INTENT(INOUT):: phm
 REAL(KIND=8), INTENT(INOUT):: dtRemain
 TYPE(rng_t), INTENT(INOUT):: RSeed
 REAL(KIND=8):: dtUsed
-INTEGER(KIND=4):: hit1, hit2, OldID(3), I1, I2, I3
+INTEGER(KIND=4):: hit1, hit2, OldID(3), I1, I2, I3, flag
 LOGICAL:: TF
+TYPE(Phonon):: OldPhn
+
+    OldPhn = phm
     
     CALL hit_ElementSurface( phm, dtUsed, hit1, hit2 )
 
@@ -160,7 +163,13 @@ LOGICAL:: TF
                     CALL Perodic( phm, hit1, hit2 )
                 CASE(3)
                     ! Only possible when hit2 = 1
-                    CALL OutDoamin( phm, dtRemain, hit1 )
+                    SELECTCASE(flag)
+                    CASE(1)
+                        CALL OutDoamin( phm, dtRemain, hit1 )
+                    CASE(2)
+                        phm = OldPhn
+                        dtRemain = dtRemain + dtUsed
+                    END SELECT
                 END SELECT
             CASE(.FALSE.)
                 CALL Mat_Interface( phm, hit1, hit2, OldID,           &

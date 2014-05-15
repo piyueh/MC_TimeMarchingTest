@@ -100,7 +100,7 @@ TYPE(rng_t):: SeedMP(NCores)
             DO WHILE ( dtRemain.gt.0 )
                 SELECTCASE( WAY_FlightTime )
                 CASE(1)
-                    CALL phn_adv_CT( phn(i), SeedMP(iCPU), dtRemain )
+                    CALL phn_adv_CT( phn(i), SeedMP(iCPU), dtRemain, 1 )
                 CASE(2)
                     CALL phn_adv_RT( phn(i), SeedMP(iCPU), dtRemain )
                 END SELECT

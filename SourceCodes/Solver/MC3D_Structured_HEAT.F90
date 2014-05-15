@@ -213,7 +213,7 @@ INTEGER(KIND=4):: i, j, k, mt, eID(3)
             DO WHILE ( dtHeat(i).gt.0 )
                 SELECTCASE( WAY_FlightTime )
                 CASE(1)
-                    CALL phn_adv_CT( HeatPhn(i), RSeed, dtHeat(i) )
+                    CALL phn_adv_CT( HeatPhn(i), RSeed, dtHeat(i), 2 )
                 CASE(2)
                     CALL phn_adv_RT( HeatPhn(i), RSeed, dtHeat(i) )
                 END SELECT

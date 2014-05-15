@@ -24,12 +24,12 @@ INTEGER(KIND=4):: Npercell
 
     WRITE(*, '("Enter CASE Name: ")', ADVANCE = 'NO')
     !READ(*, *) CaseName
-    CaseName = "SuperLattice_V"
+    CaseName = "FluxTest"
     InputFileName = casename(1:LEN_TRIM(casename))//'_initial.txt'
 
     WRITE(*, '("Enter Domain, Lx, Ly, Lz: ")', ADVANCE = 'NO')
     !READ(*, *) L
-    L = (/ 3D2, 25D0, 25D0 /)
+    L = (/ 5D3, 1D1, 1D1 /)
 
     CALL Initialize_Ge( Ge_table, Ge_start, dU_Ge, N_Ge1, N_Ge2 )
     CALL Initialize_Si( Si_table, Si_start, dU_Si, N_Si1, N_Si2 )
@@ -68,11 +68,11 @@ INTEGER(KIND=4):: i, j, k, tmpI1, Loc(3), NperCell
 
     WRITE(*, '("Enter Element Numbers, Nx, Ny, Nz: ")', ADVANCE = 'NO')
     !READ(*, *) Ne
-    Ne = (/ 120, 5, 5 /)
+    Ne = (/ 100, 2, 2 /)
 
     WRITE(*, '("Enter NperCell: ")', ADVANCE = 'NO')
     !READ(*, *) NperCell
-    NperCell = 333
+    NperCell = 1250
 
     dL = L / DBLE( Ne )
     dA_heat = dL(2) * dL(3)
@@ -139,12 +139,12 @@ INTEGER(KIND=4):: i, j, k, tmpI1, Loc(3), NperCell
     IMPLICIT NONE
 
         ele%Mat = 1
-        ele(6:15, :, :)%Mat = 2
-        ele(26:35, :, :)%Mat = 2
-        ele(46:55, :, :)%Mat = 2
-        ele(66:75, :, :)%Mat = 2
-        ele(86:95, :, :)%Mat = 2
-        ele(106:115, :, :)%Mat = 2
+        !ele(6:15, :, :)%Mat = 2
+        !ele(26:35, :, :)%Mat = 2
+        !ele(46:55, :, :)%Mat = 2
+        !ele(66:75, :, :)%Mat = 2
+        !ele(86:95, :, :)%Mat = 2
+        !ele(106:115, :, :)%Mat = 2
 
     END SUBROUTINE Initial_Material
     !==========================================================
